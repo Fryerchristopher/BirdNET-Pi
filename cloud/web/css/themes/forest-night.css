@@ -1,0 +1,48 @@
+/*
+ * Theme: forest-night
+ *
+ * A dark theme in the spirit of the "Forest Night" override that runs on
+ * birds.dorringtonbirds.com. Pick it in Admin > Settings > Theme, or preview
+ * any page with ?theme=forest-night.
+ */
+:root {
+  --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+
+  --bg: #13141a;
+  --surface: #1c1e27;
+  --surface-2: #252836;
+  --header-bg: #1c1e27;
+  --nav-bg: #1c1e27;
+  --nav-text: #9198a8;
+  --nav-hover: #2d3142;
+  --nav-active: rgba(63, 185, 80, 0.18);
+  --nav-active-text: #56d364;
+
+  --text: #e6edf3;
+  --text-muted: #9198a8;
+  --heading: #e6edf3;
+  --link: #56d364;
+  --link-hover: #3fb950;
+
+  --accent: #3fb950;
+  --accent-hover: #56d364;
+  --accent-contrast: #0b1a0f;
+  --accent-dim: rgba(63, 185, 80, 0.15);
+  --success: #3fb950;
+  --danger: #f85149;
+  --warning: #d29922;
+
+  --border: #303241;
+  --control-bg: #13141a;
+  --button-bg: #252836;
+  --button-text: #e6edf3;
+  --button-hover: #2d3142;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --transition: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+img.thumb, .player img { opacity: .9; }

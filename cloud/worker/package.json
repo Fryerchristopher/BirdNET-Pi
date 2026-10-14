@@ -1,0 +1,23 @@
+{
+  "name": "birdnet-pi-cloud",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "wrangler types && tsc --noEmit",
+    "test": "node --test tests/",
+    "db:schema:local": "wrangler d1 execute birdnet-pi --local --file=../db/schema.sql",
+    "db:schema:remote": "wrangler d1 execute birdnet-pi --remote --file=../db/schema.sql",
+    "db:seed:local": "wrangler d1 execute birdnet-pi --local --file=../db/seed.sql",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "wrangler": "^4.0.0"
+  }
+}

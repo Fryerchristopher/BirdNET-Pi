@@ -1,0 +1,8 @@
+# Copy to .dev.vars for `wrangler dev` (never commit .dev.vars)
+INGEST_TOKEN=change-me
+ADMIN_TOKEN=change-me
+IP_SALT=anything-random
+# ANTHROPIC_API_KEY=
+# AI_GATEWAY_TOKEN=
+# FLICKR_API_KEY=
+# NOTIFY_WEBHOOK=

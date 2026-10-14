@@ -1,0 +1,68 @@
+# BirdNET-Pi Cloud: single Worker that serves the API, the ingest endpoint
+# the Pi pushes to, media from R2, and the static web UI.
+#
+# First-time setup is in ../docs/DEPLOY.md. In short:
+#   wrangler d1 create birdnet-pi          -> paste database_id below
+#   wrangler r2 bucket create birdnet-pi-media
+#   wrangler secret put INGEST_TOKEN       -> same value goes in the Pi agent's config
+#   wrangler secret put ADMIN_TOKEN        -> optional, see docs/DEPLOY.md "Auth"
+#   npm run db:schema:remote
+#   npm run deploy
+
+name = "birdnet-pi-cloud"
+main = "src/index.ts"
+compatibility_date = "2025-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# The default UI. Replace the directory to ship your own design, or keep it
+# and add a theme under ../web/css/themes (see ../docs/THEMING.md).
+[assets]
+directory = "../web"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+# Everything the Worker owns goes to the Worker first; everything else is a
+# static file.
+run_worker_first = ["/api/*", "/ingest/*", "/media/*", "/theme.css", "/stream", "/index.php", "/views.php"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "birdnet-pi"
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "birdnet-pi-media"
+
+[triggers]
+# :10 past every hour -> mark stations offline, expire image cache
+# Monday 08:00 UTC    -> weekly report notification (if a webhook is set)
+crons = ["10 * * * *", "0 8 * * 1"]
+
+[vars]
+# Which auth gate protects /admin and the admin API. One of:
+#   "access"  Cloudflare Access in front of the hostname (recommended; see docs)
+#   "token"   a bearer token (ADMIN_TOKEN secret), used by the admin UI login box
+#   "open"    no auth; only for local wrangler dev
+ADMIN_AUTH = "token"
+# Cloudflare Access application AUD tag, required when ADMIN_AUTH = "access".
+ACCESS_AUD = ""
+# Your Access team domain, e.g. "myteam.cloudflareaccess.com". Required with "access".
+ACCESS_TEAM_DOMAIN = ""
+# Ask BirdNET-Pi (optional). Route Claude through a Cloudflare AI Gateway:
+#   https://gateway.ai.cloudflare.com/v1/<ACCOUNT_ID>/<GATEWAY_NAME>/anthropic
+# Leave empty to call api.anthropic.com directly. Turn the feature on with
+# chat_enabled = 1 in Admin > Settings.
+AI_GATEWAY_URL = ""
+
+# Secrets (wrangler secret put <NAME>):
+#   INGEST_TOKEN   bearer token the Pi agent presents. Required.
+#   ADMIN_TOKEN    bearer token for ADMIN_AUTH = "token".
+#   FLICKR_API_KEY optional, enables the Flickr image provider.
+#   NOTIFY_WEBHOOK optional, POSTed JSON on new species / weekly report.
+#   ANTHROPIC_API_KEY  for Ask BirdNET-Pi (or store the key in the gateway, BYOK)
+#   AI_GATEWAY_TOKEN   when the AI Gateway has authentication turned on
+#   IP_SALT            any random string; salts the per-IP chat rate-limit hash
+
+[observability]
+enabled = true
