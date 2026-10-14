@@ -20,6 +20,7 @@ import journal from './routes/journal';
 import { getSettings, weeklyReport, stationTz } from './lib/db';
 import { localDate } from './lib/time';
 import { postWebhook } from './lib/notify';
+import { publicJson } from './lib/public';
 
 const app = new Hono<AppEnv>();
 
@@ -28,6 +29,8 @@ app.onError((err, c) => {
   return c.json({ error: 'internal error', detail: String(err?.message ?? err) }, 500);
 });
 
+// Public JSON: round station coordinates, drop secrets (admin routes excluded).
+app.use('/api/v1/*', publicJson);
 app.route('/ingest', ingest);
 app.route('/api/v1/admin', admin);
 app.route('/api/v1/chat', chat);

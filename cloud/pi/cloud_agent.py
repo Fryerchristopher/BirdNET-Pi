@@ -277,7 +277,7 @@ class Agent:
         except OSError:
             backlog = None
         cfg_keys = ['MODEL', 'SF_THRESH', 'CONFIDENCE', 'SENSITIVITY', 'OVERLAP', 'RECORDING_LENGTH', 'EXTRACTION_LENGTH', 'AUDIOFMT', 'DATABASE_LANG',
-                    'PRIVACY_THRESHOLD', 'FULL_DISK', 'PURGE_THRESHOLD', 'MAX_FILES_SPECIES', 'RARE_SPECIES_THRESHOLD', 'BIRDWEATHER_ID', 'CHANNELS', 'REC_CARD']
+                    'PRIVACY_THRESHOLD', 'FULL_DISK', 'PURGE_THRESHOLD', 'MAX_FILES_SPECIES', 'RARE_SPECIES_THRESHOLD', 'CHANNELS', 'REC_CARD']
         self.cloud.post('/ingest/status', {
             'name': self.conf.get('SITE_NAME') or os.uname().nodename,
             'timezone': tz,
@@ -288,7 +288,9 @@ class Agent:
             'agent_version': AGENT_VERSION,
             'disk_used_pct': disk,
             'backlog_files': backlog,
-            'config': {k: self.conf[k] for k in cfg_keys if k in self.conf},
+            # BIRDWEATHER_ID is the BirdWeather upload token: report only whether it is set.
+            'config': {**{k: self.conf[k] for k in cfg_keys if k in self.conf},
+                       'BIRDWEATHER_ENABLED': '1' if self.conf.get('BIRDWEATHER_ID') else '0'},
         })
         # Labels and lists: re-push whenever the files change.
         labels = os.path.join(SCRIPTS, 'labels.txt')

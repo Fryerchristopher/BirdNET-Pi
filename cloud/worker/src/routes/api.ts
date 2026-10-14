@@ -10,6 +10,7 @@ import { getSpeciesImage, flickrGallery } from '../lib/images';
 import { allAboutBirdsSlug, wikiTitle } from '../lib/names';
 import { addDays, isValidDate, localDate, daysBetween } from '../lib/time';
 import { isAdmin } from '../lib/auth';
+import { coordDecimals, roundCoord } from '../lib/public';
 
 const api = new Hono<AppEnv>();
 
@@ -257,8 +258,9 @@ api.get('/ebird.csv', async (c) => {
      WHERE station_id = ? AND date = ? AND confidence > 0.75 GROUP BY com_name, hour ORDER BY hour, n DESC`,
   ).bind(station, date).all<{ com_name: string; hour: number; n: number }>();
   const [y, m, d] = date.split('-');
+  const dec = coordDecimals(c.env);
   const lines = results.map((r) =>
-    [r.com_name, '', '', '1', '', p('location'), st?.lat ?? '', st?.lon ?? '', `${Number(m)}/${Number(d)}/${y}`,
+    [r.com_name, '', '', '1', '', p('location'), roundCoord(st?.lat, dec) ?? '', roundCoord(st?.lon, dec) ?? '', `${Number(m)}/${Number(d)}/${y}`,
       `${String(r.hour).padStart(2, '0')}:00`, p('state'), p('country'), p('protocol', 'stationary'), p('num_observers', '1'), '60', 'Y', p('dist_traveled', ''), '', p('notes')]
       .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','),
   );

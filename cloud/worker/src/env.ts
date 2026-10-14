@@ -13,6 +13,8 @@ export interface Env {
   AI_GATEWAY_TOKEN?: string;
   ANTHROPIC_API_KEY?: string;
   IP_SALT?: string;
+  /** Decimal places of lat/lon in public responses (default 2, about 1 km). */
+  COORD_DECIMALS?: string;
 }
 
 /** Per-request values set by middleware. */

@@ -95,6 +95,11 @@ ingest.post('/status', async (c) => {
   const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const station = stationOf(b as { station?: string }, c);
   const cfg = (b.config && typeof b.config === 'object') ? (b.config as Record<string, unknown>) : {};
+  // The BirdWeather station ID is its upload token; older agents sent it. Keep only whether it is set.
+  if ('BIRDWEATHER_ID' in cfg) {
+    cfg.BIRDWEATHER_ENABLED = cfg.BIRDWEATHER_ID ? '1' : '0';
+    delete cfg.BIRDWEATHER_ID;
+  }
   await c.env.DB.prepare(
     `INSERT INTO stations (id, name, timezone, lat, lon, last_seen_at, analyzing_now, pi_version, agent_version, disk_used_pct, backlog_files, config_json)
      VALUES (?1, COALESCE(?2, 'BirdNET-Pi'), COALESCE(?3, 'UTC'), ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
