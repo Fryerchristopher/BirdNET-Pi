@@ -14,6 +14,8 @@ export interface SpeciesImage {
   author_url: string;
   license_url: string;
   photos_url: string;
+  author_name: string;
+  license_name: string;
 }
 
 const UA = 'BirdNET-Pi-Cloud (+https://github.com/Nachtzuster/BirdNET-Pi)';
@@ -51,15 +53,15 @@ export async function getSpeciesImage(
   const now = new Date();
   await db
     .prepare(
-      `INSERT INTO species_images (sci_name, provider, com_en_name, image_url, title, image_id, author_url, license_url, photos_url, fetched_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO species_images (sci_name, provider, com_en_name, image_url, title, image_id, author_url, license_url, photos_url, author_name, license_name, fetched_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(sci_name, provider) DO UPDATE SET com_en_name=excluded.com_en_name, image_url=excluded.image_url, title=excluded.title,
          image_id=excluded.image_id, author_url=excluded.author_url, license_url=excluded.license_url, photos_url=excluded.photos_url,
-         fetched_at=excluded.fetched_at, expires_at=excluded.expires_at`,
+         author_name=excluded.author_name, license_name=excluded.license_name, fetched_at=excluded.fetched_at, expires_at=excluded.expires_at`,
     )
     .bind(
       img.sci_name, img.provider, img.com_en_name, img.image_url, img.title, img.image_id, img.author_url, img.license_url, img.photos_url,
-      now.toISOString(), new Date(now.getTime() + ttlDays * 86400000).toISOString(),
+      img.author_name, img.license_name, now.toISOString(), new Date(now.getTime() + ttlDays * 86400000).toISOString(),
     )
     .run();
   return img;
@@ -73,10 +75,13 @@ async function fetchWikipedia(sciName: string): Promise<SpeciesImage | null> {
   const s = (await res.json()) as { title?: string; originalimage?: { source: string; width: number } };
   if (!s.originalimage?.source) return null;
   let imageUrl = s.originalimage.source.split('?')[0];
-  const imageName = decodeURIComponent(imageUrl.split('/').pop() ?? '');
+  const encodedName = imageUrl.split('/').pop() ?? '';
+  const imageName = decodeURIComponent(encodedName);
   const filePage = `https://en.wikipedia.org/wiki/File:${imageName}`;
   let authorUrl = filePage;
   let licenseUrl = filePage;
+  let authorName = '';
+  let licenseName = '';
   try {
     const info = await fetch(
       `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent('File:' + imageName)}&prop=imageinfo&iiprop=extmetadata%7Csize&format=json`,
@@ -88,12 +93,14 @@ async function fetchWikipedia(sciName: string): Promise<SpeciesImage | null> {
     const artist = meta.Artist?.value ?? '';
     const href = artist.match(/href="(http[^"]+)"/);
     if (href) authorUrl = href[1];
+    authorName = artist.replace(/<[^>]+>/g, '').trim().slice(0, 80);
     if (meta.LicenseUrl?.value) licenseUrl = meta.LicenseUrl.value;
+    licenseName = (meta.LicenseShortName?.value ?? '').trim();
   } catch {
     /* attribution falls back to the file page */
   }
   if (s.originalimage.width > 1280) {
-    imageUrl = imageUrl.replace('/commons/', '/commons/thumb/') + `/1280px-${encodeURIComponent(imageName)}`;
+    imageUrl = imageUrl.replace('/commons/', '/commons/thumb/') + `/1280px-${encodedName}`;
   }
   return {
     sci_name: sciName,
@@ -105,10 +112,18 @@ async function fetchWikipedia(sciName: string): Promise<SpeciesImage | null> {
     author_url: authorUrl,
     license_url: licenseUrl,
     photos_url: filePage,
+    author_name: authorName,
+    license_name: licenseName,
   };
 }
 
-interface FlickrPhoto { id: string; owner: string; secret: string; server: string; farm: number; title: string; }
+/** Flickr license ids to short names (flickr.photos.licenses.getInfo). */
+export const FLICKR_LICENSES: Record<string, string> = {
+  '1': 'CC BY-NC-SA 2.0', '2': 'CC BY-NC 2.0', '3': 'CC BY-NC-ND 2.0', '4': 'CC BY 2.0', '5': 'CC BY-SA 2.0', '6': 'CC BY-ND 2.0',
+  '7': 'No known copyright restrictions', '8': 'US Government work', '9': 'CC0', '10': 'Public domain',
+};
+
+interface FlickrPhoto { id: string; owner: string; secret: string; server: string; farm: number; title: string; ownername?: string; license?: string; }
 
 async function fetchFlickr(db: D1Database, sciName: string, comEnName: string, key: string, userEmail?: string): Promise<SpeciesImage | null> {
   const text = comEnName || sciName;
@@ -120,7 +135,7 @@ async function fetchFlickr(db: D1Database, sciName: string, comEnName: string, k
   }
   const q = userEmail ? encodeURIComponent(text) : encodeURIComponent(text) + '%20bird';
   const res = await fetch(
-    `https://www.flickr.com/services/rest/?method=flickr.photos.search&api_key=${key}&text=${q}&sort=relevance&license=2,3,4,5,6,9&orientation=square,portrait&per_page=5&media=photos&format=json&nojsoncallback=1${userParam}`,
+    `https://www.flickr.com/services/rest/?method=flickr.photos.search&api_key=${key}&text=${q}&sort=relevance&license=2,3,4,5,6,9&orientation=square,portrait&per_page=5&media=photos&extras=owner_name%2Clicense&format=json&nojsoncallback=1${userParam}`,
   );
   const j = (await res.json()) as { photos?: { photo: FlickrPhoto[] } };
   const bl = await db.prepare('SELECT image_id FROM blacklisted_images').all<{ image_id: string }>();
@@ -149,13 +164,15 @@ async function fetchFlickr(db: D1Database, sciName: string, comEnName: string, k
     author_url: authorUrl,
     license_url: licenseUrl,
     photos_url: `https://flickr.com/photos/${photo.owner}/${photo.id}`,
+    author_name: photo.ownername ?? '',
+    license_name: FLICKR_LICENSES[String(photo.license ?? '')] ?? '',
   };
 }
 
 /** stats.php gallery: up to 15 Flickr photos for a species. */
 export async function flickrGallery(key: string, comEnName: string) {
   const res = await fetch(
-    `https://www.flickr.com/services/rest/?method=flickr.photos.search&api_key=${key}&text=${encodeURIComponent('"' + comEnName + '"')}&license=2,3,4,5,6,9&sort=relevance&per_page=15&media=photos&format=json&nojsoncallback=1`,
+    `https://www.flickr.com/services/rest/?method=flickr.photos.search&api_key=${key}&text=${encodeURIComponent('"' + comEnName + '"')}&license=2,3,4,5,6,9&sort=relevance&per_page=15&media=photos&extras=owner_name%2Clicense&format=json&nojsoncallback=1`,
   );
   const j = (await res.json()) as { photos?: { photo: FlickrPhoto[] } };
   return (j.photos?.photo ?? []).map((p) => ({
@@ -164,5 +181,8 @@ export async function flickrGallery(key: string, comEnName: string) {
     image_url: `https://farm${p.farm}.static.flickr.com/${p.server}/${p.id}_${p.secret}.jpg`,
     photos_url: `https://flickr.com/photos/${p.owner}/${p.id}`,
     author_url: `https://flickr.com/people/${p.owner}`,
+    author_name: p.ownername ?? '',
+    license_name: FLICKR_LICENSES[String(p.license ?? '')] ?? '',
+    provider: 'flickr',
   }));
 }

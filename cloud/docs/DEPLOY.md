@@ -49,8 +49,17 @@ disable --now caddy`), or keep it for local use.
 ## 3. Settings
 
 Open `https://<your site>/admin/`, sign in with `ADMIN_TOKEN`, and set the
-site name, theme, photo source and the rest. The station's timezone and
-location come from the Pi automatically.
+site name, tagline and footer blurb (the Field Journal reads these), the
+photo source, and the weather links if you have a weather station. The
+station's timezone and location come from the Pi automatically.
+
+Photos: Wikipedia is the default and needs no key. Flickr gives named
+photographer credits and the species page gallery; `wrangler secret put
+FLICKR_API_KEY` (the same key as on the Pi's Settings page), then choose
+Flickr as the source. Existing databases need `db/migrations/0002_species_images_author.sql`
+once; fresh installs do not.
+
+BirdWeather uploads stay on the Pi (see README) and need nothing here.
 
 ## Auth
 

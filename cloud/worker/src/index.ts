@@ -16,6 +16,7 @@ import api from './routes/api';
 import admin from './routes/admin';
 import media from './routes/media';
 import chat from './routes/chat';
+import journal from './routes/journal';
 import { getSettings, weeklyReport, stationTz } from './lib/db';
 import { localDate } from './lib/time';
 import { postWebhook } from './lib/notify';
@@ -30,6 +31,7 @@ app.onError((err, c) => {
 app.route('/ingest', ingest);
 app.route('/api/v1/admin', admin);
 app.route('/api/v1/chat', chat);
+app.route('/api/v1/journal', journal);
 app.route('/api/v1', api);
 app.route('/media', media);
 
@@ -81,7 +83,14 @@ app.get('*', async (c) => {
   }
   // Admin pages are static HTML too; the auth happens in the API they call.
   // With ADMIN_AUTH=access, Cloudflare Access protects /admin* at the edge.
-  return c.env.ASSETS.fetch(c.req.raw);
+  const res = await c.env.ASSETS.fetch(c.req.raw);
+  // Client-side routes (the Field Journal UI uses /species/:slug, /day/:date, ...):
+  // an unknown extension-less path gets the app shell instead of a 404.
+  if (res.status === 404 && !/\.[a-z0-9]+$/i.test(url.pathname) && (c.req.header('accept') ?? '').includes('text/html')) {
+    const shell = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
+    if (shell.ok) return new Response(shell.body, { status: 200, headers: shell.headers });
+  }
+  return res;
 });
 
 export default {

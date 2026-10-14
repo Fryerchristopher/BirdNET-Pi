@@ -30,14 +30,18 @@ answered by Claude through a Cloudflare AI Gateway.
 
 ## Design is separate from function
 
-The Worker exposes a documented JSON API (`docs/API.md`). The default UI in
-`web/` is plain HTML, CSS and JavaScript against that API, with every color
-and font coming from a theme file (`web/css/themes/*.css`, see
-`docs/THEMING.md`). You can:
+The Worker exposes a documented JSON API (`docs/API.md`). Two front ends ship
+with the repo, and `[assets] directory` in `worker/wrangler.toml` picks one:
 
-1. use the default UI as is, picking a bundled theme in Admin > Settings;
-2. add your own theme file (a few dozen CSS variables) and pick it;
-3. replace `web/` entirely with your own design on the same API.
+- `web-field-journal/` (default): the **Field Journal** design, a living field
+  guide to one place. Plates, a this-week home page, a who-sang-when dot
+  grid, a calendar archive, light and dark. The handoff it implements is in
+  `docs/field-journal/`.
+- `web/`: a straight port of the BirdNET-Pi pages, with every color and font
+  coming from a theme file (`web/css/themes/*.css`, see `docs/THEMING.md`).
+
+You can use either as is, add a theme to the classic UI, or replace the
+directory with your own design on the same API.
 
 ## Layout
 
@@ -47,7 +51,8 @@ cloud/
   docs/                ARCHITECTURE, DEPLOY, API, THEMING, php-inventory (what was ported)
   db/schema.sql        D1 schema (idempotent); seed.sql for local dev
   worker/              Cloudflare Worker (Hono, TypeScript): API, ingest, media, admin, chat, cron
-  web/                 default UI: static pages, js/, css/base.css, css/themes/
+  web-field-journal/   the Field Journal front end (default)
+  web/                 the classic UI: static pages, js/, css/base.css, css/themes/
   pi/                  cloud_agent.py and install.sh for the Pi
 ```
 
@@ -67,12 +72,23 @@ npm run deploy
 bash ~/BirdNET-Pi/cloud/pi/install.sh https://birds.example.com <INGEST_TOKEN>
 ```
 
+## BirdWeather
+
+Nothing here touches the Pi's BirdWeather upload. `utils/reporting.py` keeps
+posting soundscapes and detections to app.birdweather.com whenever
+`BIRDWEATHER_ID` is set in `birdnet.conf`; the agent neither reads nor writes
+that file. Admin > Station shows whether the id is set.
+
 ## Status
 
 Framework complete and smoke-tested locally against `wrangler dev` with
 seeded data (API, ingest, media with range requests, admin mutations, the
 command round trip, theme switching, every page rendering without errors).
-Not yet exercised against a live Pi or a deployed Worker. The model path of
+The Field Journal
+screens were rendered headlessly at 1280 px and 390 px with no errors, and
+the recording dialog, keyboard navigation, type-ahead, dot-grid selection,
+dark mode and the mobile menu were exercised. Not yet exercised against a
+live Pi or a deployed Worker. The model path of
 Ask BirdNET-Pi follows the working implementation on
 weather.dorringtonbirds.com but has not been run with a real key from this
 tree.

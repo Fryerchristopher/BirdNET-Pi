@@ -81,7 +81,13 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
   ('recording_length',      '15'),            -- seconds, drives refresh timers
   ('stream_url',            ''),              -- optional public URL of a live audio stream (see docs)
   ('flickr_filter_email',   ''),
-  ('public_admin_links',    '0');
+  ('public_admin_links',    '0'),
+  -- Field Journal front end (web-field-journal). Site-specific copy lives here, not in the code.
+  ('site_tagline',          'Birds heard from a BirdNET-Pi listening station.'),
+  ('footer_blurb',          'a private BirdNET-Pi listening station'),
+  ('weather_url',           ''),            -- link shown next to conditions, e.g. https://weather.example.com
+  ('weather_label',         'Weather'),
+  ('weather_api_url',       '');            -- Dorrington Weather style API base for conditions; empty disables
 
 -- ---------------------------------------------------------------------------
 -- species_images: cache of the image provider lookups (was wikipedia.db /
@@ -97,6 +103,8 @@ CREATE TABLE IF NOT EXISTS species_images (
   author_url   TEXT NOT NULL DEFAULT '',
   license_url  TEXT NOT NULL DEFAULT '',
   photos_url   TEXT NOT NULL DEFAULT '',
+  author_name  TEXT NOT NULL DEFAULT '',
+  license_name TEXT NOT NULL DEFAULT '',
   fetched_at   TEXT NOT NULL,
   expires_at   TEXT NOT NULL,
   PRIMARY KEY (sci_name, provider)

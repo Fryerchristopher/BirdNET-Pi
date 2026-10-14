@@ -26,6 +26,7 @@ const SETTING_KEYS = new Set([
   'stream_url', 'flickr_filter_email', 'public_admin_links',
   'notify_title', 'notify_each_detection', 'notify_first_of_day', 'notify_new_species', 'notify_min_seconds_per_species',
   'notify_exclude_species', 'notify_only_species', 'notify_weekly_report',
+  'site_tagline', 'footer_blurb', 'weather_url', 'weather_label', 'weather_api_url',
   'chat_enabled', 'chat_model', 'chat_intro', 'chat_daily_budget', 'chat_per_ip_per_hour', 'chat_per_ip_per_day',
 ]);
 

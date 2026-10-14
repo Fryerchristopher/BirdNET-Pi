@@ -1,0 +1,48 @@
+/*
+ * Theme: default ("BirdNET-Pi classic")
+ *
+ * The palette of the original BirdNET-Pi pages: #77C487 page, #9fe29b bars,
+ * #dbffeb cells, #04AA6D accent. A theme is nothing more than these custom
+ * properties; see docs/THEMING.md for the full list and what each one does.
+ * Dark mode is optional: define the same variables under the media query.
+ */
+:root {
+  --font: 'Roboto Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --bg: #77c487;
+  --surface: #dbffeb;
+  --surface-2: #c9f5dc;
+  --header-bg: #9fe29b;
+  --nav-bg: #9fe29b;
+  --nav-text: #163d22;
+  --nav-hover: #dbffeb;
+  --nav-active: #04aa6d;
+  --nav-active-text: #ffffff;
+
+  --text: #102a18;
+  --text-muted: #3b5a45;
+  --heading: #0c2212;
+  --link: #0b5fb0;
+  --link-hover: #04aa6d;
+
+  --accent: #04aa6d;
+  --accent-hover: #038f5c;
+  --accent-contrast: #ffffff;
+  --accent-dim: rgba(4, 170, 109, 0.15);
+  --success: #1f8f3f;
+  --danger: #c8191a;
+  --warning: #b8860b;
+
+  --border: rgba(0, 0, 0, 0.12);
+  --control-bg: #ffffff;
+  --button-bg: #ffffff;
+  --button-text: #102a18;
+  --button-hover: #eefaf3;
+
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-pill: 999px;
+  --shadow: 0 0 17px 1px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.25);
+  --transition: 150ms ease;
+}

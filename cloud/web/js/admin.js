@@ -38,6 +38,11 @@ async function settings() {
     <div class="card"><h2>Site</h2><div class="form-grid">
       ${f('site_name', 'Site name')}
       ${f('site_url', 'Public URL', 'url', 'Used in notification links, e.g. https://birds.example.com')}
+      ${f('site_tagline', 'Tagline', 'text', 'Field Journal home page subtitle, e.g. "Birds heard from a listening station at 4,767 ft in the Sierra Nevada."')}
+      ${f('footer_blurb', 'Footer blurb', 'text', 'Field Journal footer, e.g. "a private BirdNET-Pi listening station in Dorrington, in the Sierra Nevada"')}
+      ${f('weather_url', 'Weather site link', 'url', 'Shown next to conditions on the Field Journal pages')}
+      ${f('weather_label', 'Weather link label')}
+      ${f('weather_api_url', 'Weather API base URL', 'url', 'A Dorrington Weather style API (/api/current.json, /api/series.json). Fills in temperature, wind and rain. Leave empty to hide conditions.')}
       ${sel('theme', 'Theme', [['default', 'default (BirdNET-Pi classic)'], ['forest-night', 'forest-night (dark)']], 'Themes are CSS files in web/css/themes. Preview any page with ?theme=name. See docs/THEMING.md to add your own.')}
       ${sel('image_provider', 'Bird photo source', [['none', 'None'], ['wikipedia', 'Wikipedia'], ['flickr', 'Flickr' + (site.flickr_enabled ? '' : ' (set FLICKR_API_KEY secret first)')]])}
       ${f('flickr_filter_email', 'Flickr: only photos by (email)', 'email')}
@@ -167,7 +172,8 @@ async function station() {
       <tr><th>Analyzing now</th><td>${esc(st.analyzing_now || '')}</td></tr><tr><th>Backlog</th><td>${st.backlog_files ?? ''} files in StreamData</td></tr>
       <tr><th>Disk used</th><td>${st.disk_used_pct ?? ''}%</td></tr><tr><th>BirdNET-Pi</th><td>${esc(st.pi_version || '')}</td></tr><tr><th>Agent</th><td>${esc(st.agent_version || '')}</td></tr>
       ${Object.entries(cfg).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</table>
-      <p class="help">Analysis settings (confidence, sensitivity, overlap, model, privacy, disk purge) still live in birdnet.conf on the Pi; this page shows what the Pi reports.</p></div>
+      <p class="help">Analysis settings (confidence, sensitivity, overlap, model, privacy, disk purge) still live in birdnet.conf on the Pi; this page shows what the Pi reports.</p>
+      <p class="help"><strong>BirdWeather:</strong> ${cfg.BIRDWEATHER_ID ? `uploads are on (station ${esc(cfg.BIRDWEATHER_ID)}). The Pi keeps sending soundscapes and detections to app.birdweather.com itself; the cloud build does not change that.` : 'no BIRDWEATHER_ID is set on the Pi, so nothing is sent to app.birdweather.com. Set it in the Pi\'s own Settings page.'}</p></div>
     <div class="card"><h2>Services on the Pi</h2><p class="help">Each button queues a command the agent runs with systemctl.</p>
       <table>${['birdnet_analysis', 'birdnet_recording', 'chart_viewer', 'spectrogram_viewer', 'livestream', 'birdnet_cloud_agent'].map((s) => `<tr><th>${s}</th><td class="row"><button data-s="${s}" data-k="restart_service">Restart</button><button data-s="${s}" data-k="stop_service">Stop</button><button data-s="${s}" data-k="start_service">Start</button></td></tr>`).join('')}</table>
       <h3 style="margin-top:1rem">Maintenance</h3><div class="row"><button data-k="sync_lists">Re-sync species lists to the Pi</button><button data-k="resync">Re-push everything from the Pi</button><button data-k="run" data-n="disk_species_count">Disk usage by species</button></div>

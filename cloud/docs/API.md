@@ -101,3 +101,27 @@ Command kinds and payloads the agent must handle: `delete_file {file_name, path}
 
 Streams the R2 object with `Accept-Ranges` and 206 responses for `Range`
 requests, so `<audio>` can seek. Immutable cache headers except under `live/`.
+
+## Journal: `/api/v1/journal` (page-shaped, used by the Field Journal UI)
+
+| Endpoint | Returns |
+|---|---|
+| `GET /site` | site copy from settings, station online state and last push (local time), today's sun times |
+| `GET /home` | this week: `hero`, `mosaic` (most, runner_up, rarest), `plates[]` (week and today counts, 12 monthly levels 0..4, presence line, best clip), `new_this_week`, `quiet_this_week`, `today_stats`, `comparison`, `conditions`, `sun` |
+| `GET /species` | every species with `week` (last 7 days), `total`, `first_date`, `last_date`, `slug` |
+| `GET /species/:slug` | facts, `levels`, `presence`, `hours[24]` all time, `usual`, `best[]` (6 clips by confidence), `more_this_week`, `links` |
+| `GET /photos/:sci` | `main` (with `credit {text, link, license_url}`) and up to 3 `gallery` images (Flickr only) |
+| `GET /day/:date` | `today` or a date: `stats`, `sun`, `conditions` (today only, from the weather API), `comparison`, `species[]` with `hours[24]`, `max_cell`, `now_hour` |
+| `GET /clips?date=&sci=&hour=&limit=` | clips for one species in one hour |
+| `GET /recording/:file_name` | one clip plus `conditions` at that moment (from the weather API series) |
+| `GET /archive/:yyyy-mm` | per-day species and detection counts, month navigation |
+| `GET /archive/day/:date` | top 5 species and stats for the side panel |
+| `GET /live` | species heard in the last 15 minutes, the last 4 distinct species as a fallback, stream URL, latest spectrogram |
+
+Monthly levels: average detections per calendar month across the years the
+station was active in that month, quantized to 1..4 against the species'
+own maximum (0 = absent). Presence line: "Here all year" when every month is
+above zero, else the longest run of present months wrapping December to
+January. Comparison: today's count up to the current time against yesterday
+at the same time, and against the 25th to 75th percentile of the same
+calendar window (plus or minus 7 days) in earlier years.

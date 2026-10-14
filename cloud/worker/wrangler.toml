@@ -14,10 +14,12 @@ main = "src/index.ts"
 compatibility_date = "2025-01-15"
 compatibility_flags = ["nodejs_compat"]
 
-# The default UI. Replace the directory to ship your own design, or keep it
-# and add a theme under ../web/css/themes (see ../docs/THEMING.md).
+# Which front end to serve. Two ship with the repo (see ../docs/THEMING.md):
+#   ../web                the default UI, a straight port of the BirdNET-Pi pages, themable with CSS variables
+#   ../web-field-journal  the "Field Journal" design (one species plate per bird, this-week view, dot grid, archive)
+# Point directory at your own folder to ship a different design on the same API.
 [assets]
-directory = "../web"
+directory = "../web-field-journal"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"

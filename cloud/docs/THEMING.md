@@ -1,6 +1,16 @@
 # Theming and custom designs
 
-There are three levels, from least to most work.
+Two front ends ship with the repo. `[assets] directory` in
+`worker/wrangler.toml` chooses which one the Worker serves:
+
+| Directory | What it is |
+|---|---|
+| `web-field-journal/` | The Field Journal design (default). Its tokens, copy and behavior are specified in `docs/field-journal/DESIGN.md`; light and dark are built in. Site copy comes from settings. |
+| `web/` | The classic UI, a page-for-page port of BirdNET-Pi, themable with CSS variables as described below. |
+
+Both talk only to `/api/v1` and share the admin pages.
+
+For the classic UI there are three levels, from least to most work.
 
 ## 1. Pick a bundled theme
 

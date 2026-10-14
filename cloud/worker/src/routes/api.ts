@@ -32,7 +32,7 @@ api.get('/site', async (c) => {
   const st = await q.stationInfo(c.env.DB, station);
   const lastSeen = st?.last_seen_at ? Date.parse(st.last_seen_at as string) : 0;
   const pub: Record<string, string> = {};
-  for (const k of ['site_name', 'theme', 'image_provider', 'info_site', 'language', 'rare_species_threshold', 'recording_length', 'stream_url', 'public_admin_links', 'site_url', 'chat_enabled', 'chat_intro']) {
+  for (const k of ['site_name', 'theme', 'image_provider', 'info_site', 'language', 'rare_species_threshold', 'recording_length', 'stream_url', 'public_admin_links', 'site_url', 'chat_enabled', 'chat_intro', 'site_tagline', 'footer_blurb', 'weather_url', 'weather_label']) {
     if (settings[k] !== undefined) pub[k] = settings[k];
   }
   return c.json({

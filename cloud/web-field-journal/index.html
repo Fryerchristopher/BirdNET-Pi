@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field Journal</title>
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="/img/bird.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Figtree:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fj/style.css">
+<script>
+  // Theme before first paint: manual choice remembered per device, else the system.
+  try { var t = localStorage.getItem('fj-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+</head>
+<body>
+<div id="app">
+  <header class="hdr"><div class="hdr-in"><span class="wordmark">&nbsp;</span></div></header>
+  <main class="main"><div class="skel-page"><div class="skel skel-h1"></div><div class="skel skel-p"></div><div class="skel skel-block"></div></div></main>
+</div>
+<script type="module" src="/fj/app.js"></script>
+</body>
+</html>
