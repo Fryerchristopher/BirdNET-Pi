@@ -111,6 +111,8 @@ class Cloud:
             body = data if isinstance(data, (bytes, bytearray)) else json.dumps(data).encode()
         req = urllib.request.Request(url, data=body, method=method)
         req.add_header('authorization', f'Bearer {self.token}')
+        # Cloudflare's browser integrity check answers urllib's default UA with 403 / error 1010.
+        req.add_header('user-agent', f'BirdNET-Pi-cloud-agent/{AGENT_VERSION}')
         if body is not None:
             req.add_header('content-type', content_type)
         with urllib.request.urlopen(req, timeout=timeout) as r:
