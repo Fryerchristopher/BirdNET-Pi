@@ -59,7 +59,10 @@ export function navigate(href, { replace = false } = {}) {
   if (replace) history.replaceState(null, '', href); else history.pushState(null, '', href);
   route();
 }
+// The admin pages share the header and footer but are plain pages, not routes.
+const isAdminPage = document.body.dataset.page === 'admin';
 document.addEventListener('click', (e) => {
+  if (isAdminPage) return;
   const a = e.target.closest('a[href]');
   if (!a || a.target === '_blank' || a.hasAttribute('download') || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
   const u = new URL(a.href, location.href);
@@ -103,7 +106,7 @@ async function getSpeciesIndex() {
   return speciesIndex;
 }
 
-function renderHeader(page) {
+export function renderHeader(page) {
   const s = site;
   const active = (id) => (page === id || (id === 'search' && page === 'species') ? 'active' : '');
   const name = esc(s?.site_name || 'Field Journal');
@@ -402,4 +405,4 @@ function mountAsk() {
 }
 
 // ---- boot --------------------------------------------------------------------------------
-loadSite().catch(() => null).then(route);
+if (!isAdminPage) loadSite().catch(() => null).then(route);
