@@ -36,7 +36,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 
 AGENT_VERSION = '0.1.0'
 HOME = os.path.expanduser('~')
@@ -191,19 +191,27 @@ class Agent:
         log(f'pushed {len(rows)} detections (rowid up to {self.state.d["hwm"]})')
         return len(rows)
 
-    def upload_pending_media(self, budget=40):
+    def upload_pending_media(self, budget=200):
         pending = self.state.d['pending_media']
         if not pending:
             return
         keep = []
         done = 0
+        yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
         for item in pending:
-            if done >= budget:
-                keep.append(item)
-                continue
             date, com, fname = item[:3]
             tries = item[3] if len(item) > 3 else 0
             audio = self.clip_path(date, com, fname)
+            if not os.path.exists(audio) and not os.path.exists(audio + '.png'):
+                # extraction may lag the DB row by a few seconds, so recent rows get
+                # retries; an older clip that is missing was purged and won't return.
+                # Neither case spends upload budget, or a backfill of purged clips stalls.
+                if date >= yesterday and tries < 30:
+                    keep.append([date, com, fname, tries + 1])
+                continue
+            if done >= budget:
+                keep.append(item)
+                continue
             ok = True
             for path, suffix in ((audio, ''), (audio + '.png', '.png')):
                 if not os.path.exists(path):
