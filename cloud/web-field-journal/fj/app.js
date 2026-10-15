@@ -95,11 +95,11 @@ export async function route() {
   document.title = `${site?.site_name || 'Field Journal'}${pageTitle(page, params)}`;
 }
 function pageTitle(page, p) {
-  return { home: ': this week', search: ': species', species: '', today: p.arg ? `: ${p.arg}` : ': today', live: ': listen live', archive: ': archive' }[page] ?? '';
+  return { home: ': this week', search: ': species', species: '', today: p.arg ? `: ${p.arg}` : ': today', live: ': listen', archive: ': archive' }[page] ?? '';
 }
 
 // ---- header and footer -----------------------------------------------------------
-const NAV = [['/', 'This week', 'home'], ['/species', 'Species', 'search'], ['/today', 'Today', 'today'], ['/live', 'Listen live', 'live'], ['/archive', 'Archive', 'archive']];
+const NAV = [['/', 'This week', 'home'], ['/species', 'Species', 'search'], ['/today', 'Today', 'today'], ['/live', 'Listen', 'live'], ['/archive', 'Archive', 'archive']];
 let speciesIndex = null;
 async function getSpeciesIndex() {
   if (!speciesIndex) speciesIndex = api('/api/v1/journal/species', { ttl: 300_000 }).then((r) => r.items);

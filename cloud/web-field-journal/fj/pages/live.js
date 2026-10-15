@@ -7,7 +7,7 @@ export async function render(main) {
   const hasStream = !!site?.stream_url;
   main.innerHTML = `
     <section class="live-top">
-      <h1 class="h1">Listen live</h1>
+      <h1 class="h1">${hasStream ? 'Listen live' : 'Listen'}</h1>
       <p class="lede">The station microphone, as it hears the forest right now.</p>
       <button class="bigplay" aria-label="Start listening" ${hasStream ? '' : 'disabled style="opacity:.5"'}><span class="tri"></span></button>
       <div class="live-lbl">${hasStream ? 'Start listening' : 'Live audio is not published'}</div>
