@@ -235,7 +235,7 @@ function cmapFor(conifer) {
   return lut;
 }
 document.addEventListener('fj-theme', () => { cmapCache.clear(); $$('.spec[data-src]').forEach((s) => drawSpec(s)); });
-const CROP = { l: 0.065, r: 0.09, t: 0.09, b: 0.14 }; // sox axes and the PIL text overlays
+const CROP = { l: 0.062, r: 0.093, t: 0.082, b: 0.079 }; // inside the sox plot frame, measured on the Pi's 940-944 x 611 PNGs
 
 export function spectrogram(src, { conifer = false } = {}) {
   const box = el(`<div class="spec ${conifer ? 'conifer' : ''}"><canvas></canvas><div class="ph"></div><span class="elapsed"></span></div>`);

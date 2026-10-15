@@ -34,7 +34,8 @@ media.get('/*', async (c) => {
   h.set('accept-ranges', 'bytes');
   const live = key.startsWith('live/');
   h.set('cache-control', live ? 'no-store' : 'public, max-age=31536000, immutable');
-  if (obj.range && 'offset' in obj.range) {
+  // R2 reports a range on every object, so only answer 206 to a Range request
+  if (opts.range && obj.range && 'offset' in obj.range) {
     const offset = obj.range.offset ?? 0;
     const length = obj.range.length ?? obj.size - offset;
     h.set('content-range', `bytes ${offset}-${offset + length - 1}/${obj.size}`);
