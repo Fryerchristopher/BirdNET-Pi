@@ -195,6 +195,9 @@ class Agent:
         pending = self.state.d['pending_media']
         if not pending:
             return
+        # newest first, so recent pages get their audio before a backfill finishes
+        # (file names end in -HH:MM:SS.<ext>)
+        pending.sort(key=lambda i: (i[0], i[2].rsplit('-', 1)[-1]), reverse=True)
         keep = []
         done = 0
         yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
