@@ -251,8 +251,14 @@ function drawSpec(box) {
     cv.width = Math.min(sw, 900); cv.height = Math.min(sh, 300);
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
     const d = ctx.getImageData(0, 0, cv.width, cv.height), p = d.data, lut = cmapFor(!!box.dataset.conifer);
-    for (let i = 0; i < p.length; i += 4) {
-      const lum = Math.min(255, Math.round(0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]));
+    // The station's recordings are quiet, so the sox image uses a sliver of its range.
+    // Stretch luminance from the median (the noise floor goes dark) to the 99.8th percentile.
+    const L = new Uint8Array(p.length / 4), hist = new Uint32Array(256);
+    for (let i = 0, j = 0; i < p.length; i += 4, j++) { L[j] = Math.min(255, Math.round(0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2])); hist[L[j]]++; }
+    const pct = (f) => { let acc = 0; const t = L.length * f; for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= t) return v; } return 255; };
+    const lo = pct(0.5), span = Math.max(1, pct(0.998) - lo);
+    for (let i = 0, j = 0; i < p.length; i += 4, j++) {
+      const lum = Math.max(0, Math.min(255, Math.round(((L[j] - lo) * 255) / span)));
       p[i] = lut[lum * 3]; p[i + 1] = lut[lum * 3 + 1]; p[i + 2] = lut[lum * 3 + 2]; p[i + 3] = 255;
     }
     ctx.putImageData(d, 0, 0);
@@ -263,6 +269,29 @@ function drawSpec(box) {
 
 // ---- audio ---------------------------------------------------------------------------
 let activeAudio = null, activeRaf = 0;
+// The station's clips peak around -60 dBFS, far too quiet to hear. Route each clip
+// through a gain node and bring its peak up to about -3 dBFS (at most +60 dB).
+let actx = null;
+const peakGain = new Map();
+async function clipGain(src) {
+  if (peakGain.has(src)) return peakGain.get(src);
+  const buf = await actx.decodeAudioData(await (await fetch(src)).arrayBuffer());
+  let peak = 0;
+  for (let ch = 0; ch < buf.numberOfChannels; ch++) { const x = buf.getChannelData(ch); for (let i = 0; i < x.length; i++) { const v = Math.abs(x[i]); if (v > peak) peak = v; } }
+  const g = peak > 0 ? Math.min(1000, 0.7 / peak) : 1;
+  peakGain.set(src, g);
+  return g;
+}
+function boosted(a, src) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    actx.resume();
+    const gain = actx.createGain();
+    gain.gain.value = 1;
+    actx.createMediaElementSource(a).connect(gain).connect(actx.destination);
+    clipGain(src).then((g) => { gain.gain.value = g; }).catch(() => { gain.gain.value = 100; });
+  } catch (e) { /* no Web Audio: plays at the recorded level */ }
+}
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 export function stopAll() {
   if (activeAudio) { activeAudio.pause(); activeAudio = null; }
@@ -288,6 +317,7 @@ export function bindPlay(btn, src, spec) {
     if (btn.dataset.playing) { stopAll(); return; }
     stopAll();
     const a = new Audio(src);
+    boosted(a, src);
     activeAudio = a;
     setPlayLabel(btn, true);
     spec?.classList.add('playing');
