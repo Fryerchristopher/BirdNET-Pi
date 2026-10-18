@@ -152,7 +152,7 @@ export function renderHeader(page) {
   // footer
   if (!$('footer.ftr')) {
     const f = el(`<footer class="ftr"><div>
-      <span>${name}, ${esc((s?.footer_blurb || 'a private BirdNET-Pi listening station').replace(/\.$/, ''))}. Built on the <a href="https://github.com/Fryerchristopher/BirdNET-Pi/tree/cloud" target="_blank" rel="noopener">Cloud branch of BirdNET-Pi</a>.</span>
+      <span>${name}, ${footerBlurb(s)}. Built on the <a href="https://github.com/Fryerchristopher/BirdNET-Pi/tree/cloud" target="_blank" rel="noopener">Cloud branch of BirdNET-Pi</a>.</span>
       ${s?.weather_url ? `<a href="${esc(s.weather_url)}">${esc(s.weather_label || 'Weather')}</a>` : ''}
       <span class="right"><button class="theme">${themeIsDark() ? 'Light mode' : 'Dark mode'}</button><a href="/admin/">Admin</a></span>
     </div></footer>`);
@@ -160,6 +160,12 @@ export function renderHeader(page) {
     $('.theme', f).onclick = (e) => { toggleTheme(); e.target.textContent = themeIsDark() ? 'Light mode' : 'Dark mode'; };
     if (s?.chat_enabled) mountAsk();
   }
+}
+
+// The blurb is admin-set text; its first "BirdNET-Pi" links to the upstream project.
+function footerBlurb(s) {
+  const text = esc((s?.footer_blurb || 'a private BirdNET-Pi listening station').replace(/\.$/, ''));
+  return text.replace('BirdNET-Pi', '<a href="https://github.com/Nachtzuster/BirdNET-Pi" target="_blank" rel="noopener">BirdNET-Pi</a>');
 }
 
 function wireSearch(box) {

@@ -17,11 +17,50 @@ import { speciesLinks } from './api';
 
 const journal = new Hono<AppEnv>();
 
+/**
+ * Seconds to keep a response in the Cloudflare edge cache, 0 for never. The Pi
+ * pushes about once a minute, so anything about today can be a minute old;
+ * past days, months and recordings change only when something is deleted.
+ */
+export function edgeTtl(url: URL): number {
+  const p = url.pathname.replace(/^\/api\/v1\/journal/, '');
+  const ageDays = (d: string | null | undefined) => (!d || d === 'today' || !isValidDate(d) ? 0 : (Date.now() - Date.parse(d + 'T00:00:00Z')) / 86_400_000);
+  const recent = (d: string | null | undefined) => ageDays(d) < 2;
+  if (p === '/site') return 30;
+  if (p === '/home' || p === '/species' || p.startsWith('/species/')) return 120;
+  let m;
+  if ((m = p.match(/^\/(?:archive\/)?day\/([^/]+)$/))) return recent(m[1]) ? 60 : 3600;
+  if (p === '/clips') return recent(url.searchParams.get('date')) ? 60 : 3600;
+  if ((m = p.match(/^\/archive\/(\d{4}-\d{2})$/))) return ageDays(`${m[1]}-28`) < 35 ? 300 : 3600;
+  if (p.startsWith('/recording/') || p.startsWith('/photos/')) return 3600;
+  return 0; // /live and anything new
+}
+
 journal.use('*', async (c, next) => {
   const s = c.req.query('station') ?? 'default';
   c.set('station', /^[A-Za-z0-9_-]{1,64}$/.test(s) ? s : 'default');
+  const ttl = c.req.method === 'GET' ? edgeTtl(new URL(c.req.url)) : 0;
+  // caches.default is per Cloudflare location and a no-op on *.workers.dev.
+  const cache = ttl ? (caches as unknown as { default: Cache }).default : null;
+  if (cache) {
+    const hit = await cache.match(c.req.raw);
+    if (hit) {
+      const res = new Response(hit.body, hit);
+      res.headers.set('cache-control', hit.headers.get('x-client-cache-control') || 'no-store');
+      res.headers.delete('x-client-cache-control');
+      res.headers.set('x-edge-cache', 'hit');
+      return res;
+    }
+  }
   c.header('cache-control', 'no-store');
   await next();
+  if (cache && c.res.status === 200) {
+    const stored = new Response(c.res.clone().body, c.res);
+    stored.headers.set('x-client-cache-control', c.res.headers.get('cache-control') || 'no-store');
+    stored.headers.set('cache-control', `public, max-age=${ttl}`);
+    c.executionCtx.waitUntil(cache.put(c.req.raw, stored));
+    c.res.headers.set('x-edge-cache', 'miss');
+  }
 });
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -61,14 +100,14 @@ export function presenceLine(levels: number[]): string {
 async function monthLevels(db: D1Database, station: string, scis: string[]): Promise<Map<string, { levels: number[]; avg: number[] }>> {
   const out = new Map<string, { levels: number[]; avg: number[] }>();
   if (!scis.length) return out;
-  const active = await db.prepare("SELECT DISTINCT substr(date,1,7) AS ym FROM detections WHERE station_id = ?").bind(station).all<{ ym: string }>();
+  const active = await db.prepare("SELECT DISTINCT substr(date,1,7) AS ym FROM hourly_counts WHERE station_id = ?").bind(station).all<{ ym: string }>();
   const yearsPerMonth = new Array(12).fill(0);
   for (const r of active.results) yearsPerMonth[Number(r.ym.slice(5, 7)) - 1]++;
   const sums = new Map<string, number[]>();
   for (let i = 0; i < scis.length; i += 90) {
     const chunk = scis.slice(i, i + 90);
     const { results } = await db
-      .prepare(`SELECT sci_name, CAST(substr(date,6,2) AS INTEGER) AS m, COUNT(*) AS n FROM detections WHERE station_id = ? AND sci_name IN (${chunk.map(() => '?').join(',')}) GROUP BY sci_name, m`)
+      .prepare(`SELECT sci_name, CAST(substr(date,6,2) AS INTEGER) AS m, SUM(n) AS n FROM hourly_counts WHERE station_id = ? AND sci_name IN (${chunk.map(() => '?').join(',')}) GROUP BY sci_name, m`)
       .bind(station, ...chunk)
       .all<{ sci_name: string; m: number; n: number }>();
     for (const r of results) {
@@ -95,7 +134,7 @@ function usualTime(hours: number[]): { peak: number; from: number; to: number; t
 }
 
 async function hoursAllTime(db: D1Database, station: string, sci: string): Promise<number[]> {
-  const { results } = await db.prepare('SELECT CAST(substr(time,1,2) AS INTEGER) AS h, COUNT(*) AS n FROM detections WHERE station_id = ? AND sci_name = ? GROUP BY h').bind(station, sci).all<{ h: number; n: number }>();
+  const { results } = await db.prepare('SELECT hour AS h, SUM(n) AS n FROM hourly_counts WHERE station_id = ? AND sci_name = ? GROUP BY hour').bind(station, sci).all<{ h: number; n: number }>();
   const a = new Array(24).fill(0);
   for (const r of results) a[r.h] = r.n;
   return a;
@@ -104,9 +143,9 @@ async function hoursAllTime(db: D1Database, station: string, sci: string): Promi
 /** Counts per species in a date range, keyed by sci. */
 async function countsIn(db: D1Database, station: string, from: string, to: string) {
   const { results } = await db
-    .prepare('SELECT sci_name, com_name, COUNT(*) AS n, MIN(date) AS first_date, MAX(date) AS last_date, MIN(time) AS first_time, MAX(date || \' \' || time) AS last_dt FROM detections WHERE station_id = ? AND date BETWEEN ? AND ? GROUP BY sci_name ORDER BY n DESC, com_name')
+    .prepare('SELECT sci_name, MAX(com_name) AS com_name, SUM(n) AS n, MIN(date) AS first_date, MAX(date) AS last_date FROM hourly_counts WHERE station_id = ? AND date BETWEEN ? AND ? GROUP BY sci_name ORDER BY n DESC, com_name')
     .bind(station, from, to)
-    .all<{ sci_name: string; com_name: string; n: number; first_date: string; last_date: string; first_time: string; last_dt: string }>();
+    .all<{ sci_name: string; com_name: string; n: number; first_date: string; last_date: string }>();
   return results;
 }
 
@@ -127,12 +166,20 @@ async function comparison(db: D1Database, station: string, date: string, upToTim
   const todayN = (t.results[0] as { n: number }).n;
   const yN = (y.results[0] as { n: number }).n;
   // Typical: same calendar window (+/- 7 days) in earlier years, up to the same time.
-  const mmdd: string[] = [];
-  for (let i = -7; i <= 7; i++) mmdd.push(addDays(date, i).slice(5));
-  const typ = await db
-    .prepare(`SELECT date, COUNT(*) AS n FROM detections WHERE station_id = ? AND substr(date,6,5) IN (${mmdd.map(() => '?').join(',')}) AND date < ? ${timeClause} GROUP BY date`)
-    .bind(station, ...mmdd, addDays(date, -7), ...(upToTime ? [upToTime] : []))
-    .all<{ date: string; n: number }>();
+  // The dates are spelled out so the date index can be used (at most 6 years, which
+  // keeps the bind count under D1's 100).
+  const first = await db.prepare('SELECT MIN(date) AS d FROM hourly_counts WHERE station_id = ?').bind(station).first<{ d: string | null }>();
+  const dates: string[] = [];
+  const thisYear = Number(date.slice(0, 4));
+  const firstYear = first?.d ? Math.max(Number(first.d.slice(0, 4)), thisYear - 6) : thisYear;
+  for (let y = firstYear; y < thisYear; y++) {
+    const base = `${y}-${date.slice(5) === '02-29' ? '02-28' : date.slice(5)}`;
+    for (let i = -7; i <= 7; i++) dates.push(addDays(base, i));
+  }
+  const inList = dates.map(() => '?').join(',');
+  const typ = !dates.length ? { results: [] as { date: string; n: number }[] } : upToTime
+    ? await db.prepare(`SELECT date, COUNT(*) AS n FROM detections WHERE station_id = ? AND date IN (${inList}) AND time <= ? GROUP BY date`).bind(station, ...dates, upToTime).all<{ date: string; n: number }>()
+    : await db.prepare(`SELECT date, SUM(n) AS n FROM hourly_counts WHERE station_id = ? AND date IN (${inList}) GROUP BY date`).bind(station, ...dates).all<{ date: string; n: number }>();
   const vals = typ.results.map((r) => r.n).sort((a, b) => a - b);
   const pct = (p: number) => (vals.length ? vals[Math.min(vals.length - 1, Math.floor(p * vals.length))] : null);
   const p25 = pct(0.25), p75 = pct(0.75);
@@ -256,9 +303,9 @@ journal.get('/species', async (c) => {
   const x = await ctx(c);
   const weekFrom = addDays(x.today, -6);
   const { results } = await c.env.DB
-    .prepare(`SELECT sci_name, MAX(com_name) AS com_name, COUNT(*) AS total, MIN(date) AS first_date, MAX(date) AS last_date,
-                     SUM(CASE WHEN date >= ? THEN 1 ELSE 0 END) AS week
-              FROM detections WHERE station_id = ? GROUP BY sci_name ORDER BY com_name COLLATE NOCASE`)
+    .prepare(`SELECT sci_name, MAX(com_name) AS com_name, SUM(n) AS total, MIN(date) AS first_date, MAX(date) AS last_date,
+                     SUM(CASE WHEN date >= ? THEN n ELSE 0 END) AS week
+              FROM hourly_counts WHERE station_id = ? GROUP BY sci_name ORDER BY com_name COLLATE NOCASE`)
     .bind(weekFrom, x.station)
     .all<{ sci_name: string; com_name: string; total: number; first_date: string; last_date: string; week: number }>();
   return c.json({ total: results.length, items: results.map((r) => ({ ...r, slug: slugOf(r.sci_name) })) });
@@ -269,16 +316,20 @@ journal.get('/species/:slug', async (c) => {
   const x = await ctx(c);
   const db = c.env.DB;
   const slug = c.req.param('slug');
-  const sp = await db.prepare("SELECT sci_name, MAX(com_name) AS com_name, COUNT(*) AS total, MIN(date) AS first_date, MAX(date) AS last_date, MAX(date || ' ' || time) AS last_dt FROM detections WHERE station_id = ? AND (sci_name = ? OR LOWER(REPLACE(REPLACE(sci_name, ' ', '-'), '.', '')) = ?) GROUP BY sci_name LIMIT 1")
-    .bind(x.station, slug, slug.toLowerCase()).first<{ sci_name: string; com_name: string; total: number; first_date: string; last_date: string; last_dt: string }>();
+  const all = await db.prepare('SELECT sci_name, MAX(com_name) AS com_name, SUM(n) AS total, MIN(date) AS first_date, MAX(date) AS last_date FROM hourly_counts WHERE station_id = ? GROUP BY sci_name')
+    .bind(x.station).all<{ sci_name: string; com_name: string; total: number; first_date: string; last_date: string }>();
+  const want = slug.toLowerCase();
+  const sp = all.results.find((r) => r.sci_name === slug || slugOf(r.sci_name) === want || r.sci_name.toLowerCase().replace(/ /g, '-').replace(/\./g, '') === want);
   if (!sp) return c.json({ error: 'not found' }, 404);
+  const lastT = await db.prepare('SELECT MAX(time) AS t FROM detections WHERE station_id = ? AND sci_name = ? AND date = ?').bind(x.station, sp.sci_name, sp.last_date).first<{ t: string | null }>();
+  const lastDt = `${sp.last_date} ${lastT?.t ?? '00:00:00'}`;
   const weekFrom = addDays(x.today, -6);
   const [lv, hours, best, week, weekCount, links] = await Promise.all([
     monthLevels(db, x.station, [sp.sci_name]),
     hoursAllTime(db, x.station, sp.sci_name),
     db.prepare(`SELECT id, date, time, sci_name, com_name, confidence, file_name, com_name_safe, media_key, has_audio, has_png, has_shifted, locked, on_pi FROM detections WHERE station_id = ? AND sci_name = ? AND has_audio = 1 ORDER BY confidence DESC, date DESC, time DESC LIMIT 6`).bind(x.station, sp.sci_name).all<q.DetectionRow>(),
     countsIn(db, x.station, weekFrom, x.today),
-    db.prepare('SELECT COUNT(*) AS n, SUM(CASE WHEN date = ? THEN 1 ELSE 0 END) AS today FROM detections WHERE station_id = ? AND sci_name = ? AND date >= ?').bind(x.today, x.station, sp.sci_name, weekFrom).first<{ n: number; today: number }>(),
+    db.prepare('SELECT SUM(n) AS n, SUM(CASE WHEN date = ? THEN n ELSE 0 END) AS today FROM hourly_counts WHERE station_id = ? AND sci_name = ? AND date >= ?').bind(x.today, x.station, sp.sci_name, weekFrom).first<{ n: number; today: number }>(),
     speciesLinks(db, x.station, x.settings, sp.sci_name),
   ]);
   const levels = lv.get(sp.sci_name)?.levels ?? new Array(12).fill(0);
@@ -286,7 +337,7 @@ journal.get('/species/:slug', async (c) => {
   const more = week.filter((r) => r.sci_name !== sp.sci_name).slice(0, 9).map((r) => ({ sci_name: r.sci_name, com_name: r.com_name, slug: slugOf(r.sci_name), week: r.n }));
   return c.json({
     sci_name: sp.sci_name, com_name: sp.com_name, slug: slugOf(sp.sci_name),
-    total: sp.total, first_date: sp.first_date, last_date: sp.last_date, last_time: sp.last_dt.slice(11, 16),
+    total: sp.total, first_date: sp.first_date, last_date: sp.last_date, last_time: lastDt.slice(11, 16),
     week: weekCount?.n ?? 0, today: weekCount?.today ?? 0,
     levels, presence: presenceLine(levels),
     hours, usual: u,
@@ -378,10 +429,10 @@ journal.get('/archive/:ym', async (c) => {
   const ym = c.req.param('ym');
   if (!/^\d{4}-\d{2}$/.test(ym)) return c.json({ error: 'bad month' }, 400);
   const { results } = await c.env.DB
-    .prepare("SELECT date, COUNT(*) AS detections, COUNT(DISTINCT sci_name) AS species FROM detections WHERE station_id = ? AND substr(date,1,7) = ? GROUP BY date")
-    .bind(x.station, ym)
+    .prepare('SELECT date, SUM(n) AS detections, COUNT(DISTINCT sci_name) AS species FROM hourly_counts WHERE station_id = ? AND date BETWEEN ? AND ? GROUP BY date')
+    .bind(x.station, `${ym}-01`, `${ym}-31`)
     .all<{ date: string; detections: number; species: number }>();
-  const bounds = await c.env.DB.prepare('SELECT MIN(date) AS first, MAX(date) AS last FROM detections WHERE station_id = ?').bind(x.station).first<{ first: string | null; last: string | null }>();
+  const bounds = await c.env.DB.prepare('SELECT MIN(date) AS first, MAX(date) AS last FROM hourly_counts WHERE station_id = ?').bind(x.station).first<{ first: string | null; last: string | null }>();
   const [y, m] = ym.split('-').map(Number);
   const first = new Date(Date.UTC(y, m - 1, 1));
   const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();

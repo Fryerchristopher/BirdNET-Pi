@@ -126,8 +126,11 @@ async function runScheduled(cron: string, env: Env) {
       await postWebhook(env.NOTIFY_WEBHOOK, { type: 'weekly_report', station: st.id, title: `BirdNET-Pi: Week ${r.week} Report`, body: lines.join('\n'), report: r });
     }
   } else {
-    // Hourly housekeeping: drop expired image cache rows, forget stale taken commands.
+    // Hourly housekeeping: drop expired image cache rows, forget stale taken commands, refresh planner stats.
     await env.DB.prepare("DELETE FROM species_images WHERE expires_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-30 days')").run();
     await env.DB.prepare("UPDATE commands SET status = 'pending', taken_at = NULL WHERE status = 'taken' AND taken_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 hour')").run();
+    // Keep the query planner's statistics current as detections grow. Without
+    // them it picks the wrong index and scans the whole detections table.
+    await env.DB.prepare('PRAGMA optimize').run();
   }
 }

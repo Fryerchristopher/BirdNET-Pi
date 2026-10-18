@@ -59,6 +59,12 @@ FLICKR_API_KEY` (the same key as on the Pi's Settings page), then choose
 Flickr as the source. Existing databases need `db/migrations/0002_species_images_author.sql`
 once; fresh installs do not.
 
+Upgrading a database created before 2026-10-18: run
+`wrangler d1 execute birdnet-pi --remote --file=../db/migrations/0003_hourly_counts.sql`
+before deploying the new Worker. It adds the `hourly_counts` table the Field
+Journal reads, the triggers that keep it current, and fills it from the
+existing detections (a few seconds for 700k rows). Safe to run again.
+
 BirdWeather uploads stay on the Pi (see README) and need nothing here.
 
 ## Auth
