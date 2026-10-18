@@ -1,4 +1,4 @@
-<h1 align="center"><a href="https://github.com/mcguirepr89/BirdNET-Pi/blob/main/LICENSE">Review the license!!</a></h1>
+<h1 align="center"><a href="LICENSE">Review the license!!</a></h1>
 <h1 align="center">You may not use BirdNET-Pi to develop a commercial product!!!!</h1>
 <h1 align="center">
   BirdNET-Pi
@@ -7,21 +7,37 @@
 A realtime acoustic bird classification system for the Raspberry Pi 5, 4B, 400, 3B+, and 0W2
 </p>
 <p align="center">
+<b>Cloud branch:</b> the Pi records and identifies; the website runs on Cloudflare.
+</p>
+<p align="center">
   <img src="https://user-images.githubusercontent.com/60325264/140656397-bf76bad4-f110-467c-897d-992ff0f96476.png" />
 </p>
 <p align="center">
 Icon made by <a href="https://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>
 </p>
 
-## About this fork:
-I've been building on [mcguirepr89's](https://github.com/mcguirepr89/BirdNET-Pi) most excellent work to further update and improve BirdNET-Pi. Maybe someone will find it useful.
+## About this repository
 
-Changes include:
+BirdNET-Pi was created by [mcguirepr89](https://github.com/mcguirepr89/BirdNET-Pi), whose repository is now archived. [Nachtzuster](https://github.com/Nachtzuster/BirdNET-Pi) has kept that work going, keeping BirdNET-Pi running on recent Raspberry Pi hardware and Raspberry Pi OS releases (the Pi 5, Bookworm and Trixie) and adding the improvements listed below. Nachtzuster's repository is the one to install from and the place to report Pi-side issues.
+
+This repository is a fork of Nachtzuster's. Its `cloud` branch was created to move BirdNET-Pi's web serving off the Pi and onto Cloudflare, using the free plan or the inexpensive Workers Paid plan ($5 a month). The Pi keeps recording and identifying birds exactly as before. A small agent pushes each detection, clip and spectrogram to a Cloudflare Worker, which stores them (D1 for detections, R2 for audio and images) and serves the website. The Pi never accepts a connection from the internet. You can see it running at [birds.dorringtonbirds.com](https://birds.dorringtonbirds.com); setup is in [cloud/README.md](cloud/README.md) and [cloud/docs/DEPLOY.md](cloud/docs/DEPLOY.md).
+
+### Why Cloudflare
+
+**Security:** a BirdNET-Pi that serves its own website has to be opened to the internet, usually through a router port-forward to a small computer on your home network. With the site on Cloudflare, nothing on the Pi is reachable from outside: no open ports, and Cloudflare's network absorbs attacks and bot traffic before they get anywhere near your home. The admin pages can sit behind Cloudflare Access. **Privacy:** visitors talk to Cloudflare, not to your house, so your home IP address is never published, and the public API rounds the station's coordinates. **Customization:** the site is a set of static pages over a documented JSON API, so you can restyle it, swap in a different design (the Field Journal design ships alongside a port of the classic pages) or build your own, then publish it with one command without touching the Pi.
+
+**License:** the cloud code is a derivative of BirdNET-Pi and carries the same [CC BY-NC-SA 4.0](LICENSE) license: free to use, change and share, but not for commercial products.
+
+**Cost:** the free plan covers a small station: 100,000 requests a day, 5 million database rows read and 100,000 written a day, 5 GB of database and 10 GB of audio and images. A station with years of history will want Workers Paid ($5 a month), because loading a large backlog writes far more than 100,000 rows a day, and storage beyond 10 GB costs $0.015 per GB a month. For example, the Dorrington station (about 690,000 detections and 19 GB of clips) costs the $5 plan plus about 15 cents.
+
+## Nachtzuster's improvements
+
+Nachtzuster's work on top of mcguirepr89's original includes:
 
  - Backup & Restore
  - Web ui is much more responsive
  - Daily charts now include all species, not just top/bottom 10
- - Bump apprise version, so more notification type are possible
+ - Bump apprise version, so more notification types are possible
  - Swipe events on Daily Charts (by @croisez)
  - Support for 'Species range model V2.4 - V2'
  - Bookworm and Trixie support
@@ -62,7 +78,7 @@ Check out birds from around the world
 * A USB Microphone or Sound Card
 
 ## Installation
-[A comprehensive installation guide is available here](https://github.com/mcguirepr89/BirdNET-Pi/wiki/Installation-Guide). This guide is slightly out-dated: make sure to pick Bookworm, also the curl command is still pointing to mcguirepr89's repo.
+[A comprehensive installation guide is available here](https://github.com/mcguirepr89/BirdNET-Pi/wiki/Installation-Guide). This guide is slightly out of date: pick the current 64-bit Raspberry Pi OS (Trixie), and use the install command below rather than the guide's, which still points to mcguirepr89's repo.
 
 Please note that installing BirdNET-Pi on top of other servers is not supported. If this is something that you require, please open a discussion for your idea and inquire about how to contribute to development.
 
@@ -75,15 +91,25 @@ curl -s https://raw.githubusercontent.com/Nachtzuster/BirdNET-Pi/main/newinstall
 The installer takes care of any and all necessary updates, so you can run that as the very first command upon the first boot, if you'd like.
 
 The installation creates a log in `$HOME/installation-$(date "+%F").txt`.
+
+### Adding the Cloudflare website (this fork's `cloud` branch)
+Install BirdNET-Pi as above first, and get it recording. Then deploy the Cloudflare side by following [cloud/docs/DEPLOY.md](cloud/docs/DEPLOY.md), which gives you the site's address and an ingest token. On the Pi, keep this branch in its own folder so the main BirdNET-Pi install keeps updating normally from Nachtzuster:
+```
+git clone -b cloud https://github.com/Fryerchristopher/BirdNET-Pi.git ~/birdnet-cloud
+bash ~/birdnet-cloud/cloud/pi/install.sh https://birds.example.com <INGEST_TOKEN>
+journalctl -fu birdnet_cloud_agent   # watch the first push (and any backfill)
+```
+`install.sh` copies the agent into `~/BirdNET-Pi/scripts/` and installs the `birdnet_cloud_agent` service. BirdNET-Pi's own updates leave it in place. To update the agent later, run `git -C ~/birdnet-cloud pull` and the `install.sh` line again.
+
 ## Access
 The BirdNET-Pi can be accessed from any web browser on the same network:
 - http://birdnetpi.local OR your Pi's IP address
 - Default Basic Authentication Username: birdnet
-- Password is empty by default. Set this in "Tools" > "Settings" > "Advanced Settings"
+- Password is empty by default. Set one in "Tools" > "Settings" > "Advanced Settings", especially if anyone else can reach your network. With the `cloud` branch the public site is on Cloudflare, and the Pi's own pages stay on your local network.
 
-Please take a look at the [wiki](https://github.com/mcguirepr89/BirdNET-Pi/wiki) and [discussions](https://github.com/mcguirepr89/BirdNET-Pi/discussions) for information on
+mcguirepr89's [wiki](https://github.com/mcguirepr89/BirdNET-Pi/wiki) and [discussions](https://github.com/mcguirepr89/BirdNET-Pi/discussions) are archived (still readable, no longer open for posts). Current questions belong in [Nachtzuster's discussions](https://github.com/Nachtzuster/BirdNET-Pi/discussions). The archive is still a good source on
 - [BirdNET-Pi's Deep Convolutional Neural Network(s)](https://github.com/mcguirepr89/BirdNET-Pi/wiki/BirdNET-Pi:-some-theory-on-classification-&-some-practical-hints)
-- [making your installation public](https://github.com/mcguirepr89/BirdNET-Pi/wiki/Sharing-Your-BirdNET-Pi)
+- making your installation public: the old wiki page opens the Pi to the internet through port forwarding; this fork's [Cloudflare site](cloud/README.md) does it without exposing the Pi
 - [backing up and restoring your database](https://github.com/mcguirepr89/BirdNET-Pi/wiki/Backup-and-Restore-the-Database)
 - [adjusting your sound card settings](https://github.com/mcguirepr89/BirdNET-Pi/wiki/Adjusting-your-sound-card)
 - [suggested USB microphones](https://github.com/mcguirepr89/BirdNET-Pi/discussions/39)
@@ -98,7 +124,7 @@ Please take a look at the [wiki](https://github.com/mcguirepr89/BirdNET-Pi/wiki)
 Use the web interface and go to "Tools" > "System Controls" > "Update". If you encounter any issues with that, or suspect that the update did not work for some reason, please save its output and post it in an issue where we can help.
 
 ## Backup and Restore
-Use the web interface and go to "Tools" > "System Controls" > "Backup" or "Restore". Backup/Restore is primary meant for migrating your data for one system to another. Since the time required to create or restore a backup depends on the size of the data set and the speed of the storage, this could take quite a while.
+Use the web interface and go to "Tools" > "System Controls" > "Backup" or "Restore". Backup/Restore is primarily meant for migrating your data from one system to another. Since the time required to create or restore a backup depends on the size of the data set and the speed of the storage, this could take quite a while.
 
 Alternatively, the backup script can be used directly. These examples assume the backup medium is mounted on `/mnt`
 
@@ -130,9 +156,9 @@ cpu-model: BirdNet
 ```
 ## Migrating
 Before switching, make sure your installation is fully up-to-date. Also make sure to have a backup, that is also the only way to get back to the original BirdNET-Pi.
-Please note that upgrading your underlying OS to Bookworm is not going to work. Please stick to Bullseye. If you do want Bookworm, you need to start from a fresh install and copy back your data. (remember the backup!)
+Please note that upgrading the underlying OS in place (for example from Bullseye to Bookworm or Trixie) is not going to work. To move to a newer OS, start from a fresh install and restore your backup.
 
-Run these commands to migrate to this repo:
+Run these commands to migrate from mcguirepr89's repo to Nachtzuster's:
 ```
 git remote remove origin
 git remote add origin https://github.com/Nachtzuster/BirdNET-Pi.git
@@ -146,16 +172,16 @@ PLEASE search the repo for your issue before creating a new one. This repo has n
 
 ## Sharing
 Please join a Discussion!! and please join [BirdWeather!!](https://app.birdweather.com)
-I hope that if you find BirdNET-Pi has been worth your time, you will share your setup, results, customizations, etc. [HERE](https://github.com/mcguirepr89/BirdNET-Pi/discussions/69) and will consider [making your installation public](https://github.com/mcguirepr89/BirdNET-Pi/wiki/Sharing-Your-BirdNET-Pi).
+I hope that if you find BirdNET-Pi has been worth your time, you will share your setup, results, customizations, etc. [HERE](https://github.com/mcguirepr89/BirdNET-Pi/discussions/69) and will consider making your installation public, which this fork's [Cloudflare site](cloud/README.md) lets you do without exposing the Pi.
 
-## Homeassistant addon
+## Home Assistant add-on
 
-BirdNET-Pi can also be run as a [Homeassistant](https://www.home-assistant.io/) addon through docker.
+BirdNET-Pi can also be run as a [Home Assistant](https://www.home-assistant.io/) add-on through Docker.
 For more information : https://github.com/alexbelgium/hassio-addons/blob/master/birdnet-pi/README.md
 
 ## Docker
 
-BirdNET-Pi can also be run as as a docker container.
+BirdNET-Pi can also be run as a Docker container.
 For more information : https://github.com/alexbelgium/hassio-addons/blob/master/birdnet-pi/README_standalone.md
 
 ## Cool Links
@@ -175,8 +201,15 @@ The bird names are in English by default, but other localized versions are avail
 
 
 ## Screenshots
+The Pi's own web interface:
+
 ![Overview](docs/overview.png)
 ![Spectrogram](docs/spectrogram.png)
+
+The Field Journal design on Cloudflare ([birds.dorringtonbirds.com](https://birds.dorringtonbirds.com)):
+
+![This week](docs/field-journal-week.jpg)
+![Today](docs/field-journal-today.jpg)
 
 
 ## :thinking:

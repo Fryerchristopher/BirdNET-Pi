@@ -24,18 +24,32 @@ npm run deploy
 ```
 
 `wrangler deploy` prints the `*.workers.dev` URL. To use your own hostname
-add a route or custom domain to the Worker in the dashboard (Workers &
-Pages > birdnet-pi-cloud > Settings > Domains & Routes).
+(its zone must be in the same Cloudflare account), add to `wrangler.toml`
+
+```
+routes = [{ pattern = "birds.example.com", custom_domain = true }]
+workers_dev = true
+```
+
+and deploy again. Wrangler turns the `*.workers.dev` address off once routes
+are set unless `workers_dev = true` is there. If the hostname already has a
+DNS record (an old site, a tunnel), delete it first or the custom domain is
+refused. The dashboard does the same thing under Workers & Pages >
+birdnet-pi-cloud > Settings > Domains & Routes.
 
 Generate tokens with `openssl rand -hex 32`.
 
 ## 2. The Pi
 
 ```
-cd ~/BirdNET-Pi && git pull           # or copy the cloud/pi directory over
-bash cloud/pi/install.sh https://birds.example.com <INGEST_TOKEN>
+git clone -b cloud https://github.com/Fryerchristopher/BirdNET-Pi.git ~/birdnet-cloud
+bash ~/birdnet-cloud/cloud/pi/install.sh https://birds.example.com <INGEST_TOKEN>
 journalctl -fu birdnet_cloud_agent
 ```
+
+Keep the clone separate from `~/BirdNET-Pi`, which should stay on the
+upstream branch so BirdNET-Pi's own updater keeps working. `install.sh`
+copies the agent into `~/BirdNET-Pi/scripts/`; those updates leave it alone.
 
 The first run pushes the whole history: rows in batches of 200 and then the
 clips, forty per cycle. A station with tens of thousands of clips takes a
@@ -143,4 +157,6 @@ cd cloud/worker && git pull && npm install && npm run db:schema:remote && npm ru
 ```
 
 The schema file is idempotent; re-running it never drops data. On the Pi,
-re-run `install.sh` with the same arguments to pick up a new agent.
+run `git -C ~/birdnet-cloud pull`, then re-run `install.sh` with the same
+arguments to pick up a new agent. On a database created before a migration
+in `db/migrations/` was added, run that migration before deploying.

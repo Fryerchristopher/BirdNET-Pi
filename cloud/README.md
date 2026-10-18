@@ -62,15 +62,33 @@ See `docs/DEPLOY.md`. The short version:
 
 ```
 cd cloud/worker && npm install
+wrangler login                           # the Cloudflare account that will host the site
 wrangler d1 create birdnet-pi            # paste the id into wrangler.toml
 wrangler r2 bucket create birdnet-pi-media
 wrangler secret put INGEST_TOKEN
 wrangler secret put ADMIN_TOKEN
 npm run db:schema:remote
 npm run deploy
-# on the Pi:
-bash ~/BirdNET-Pi/cloud/pi/install.sh https://birds.example.com <INGEST_TOKEN>
+# on the Pi, in a folder of its own so ~/BirdNET-Pi keeps tracking upstream:
+git clone -b cloud https://github.com/Fryerchristopher/BirdNET-Pi.git ~/birdnet-cloud
+bash ~/birdnet-cloud/cloud/pi/install.sh https://birds.example.com <INGEST_TOKEN>
 ```
+
+Upgrading an existing deployment: run any new files in `db/migrations/` against
+the database before deploying the new Worker (DEPLOY.md lists which ones).
+To serve the site on your own hostname, add a custom domain route to
+`wrangler.toml` (see DEPLOY.md); keep `workers_dev = true` if anything still
+uses the `*.workers.dev` address.
+
+### Free plan or Workers Paid
+
+A small station fits the free plan. Since September 2026 Cloudflare enforces
+D1's free daily limits (5 million rows read, 100,000 rows written, reset at
+midnight UTC); past them, queries fail until the reset, so the site errors.
+The first sync from a Pi with a long history writes far more than 100,000
+rows, so either let it spread over several days or use Workers Paid ($5 a
+month), which the Dorrington station uses. R2 is free to 10 GB of clips, then
+$0.015 per GB a month.
 
 ## BirdWeather
 
@@ -81,14 +99,12 @@ that file. Admin > Station shows whether the id is set.
 
 ## Status
 
-Framework complete and smoke-tested locally against `wrangler dev` with
-seeded data (API, ingest, media with range requests, admin mutations, the
-command round trip, theme switching, every page rendering without errors).
-The Field Journal
-screens were rendered headlessly at 1280 px and 390 px with no errors, and
-the recording dialog, keyboard navigation, type-ahead, dot-grid selection,
-dark mode and the mobile menu were exercised. Not yet exercised against a
-live Pi or a deployed Worker. The model path of
+Live since 2026-10-14 at [birds.dorringtonbirds.com](https://birds.dorringtonbirds.com),
+serving the Dorrington station: about 690,000 detections back to March 2024 and
+19 GB of clips in R2, with the Pi pushing new detections every minute or so.
+The Field Journal pages answer in well under a second (an hourly summary table,
+`db/migrations/0003_hourly_counts.sql`, and edge caching). The classic `web/` UI is smoke-tested against
+`wrangler dev` with seeded data but not run in production. The model path of
 Ask BirdNET-Pi follows the working implementation on
 weather.dorringtonbirds.com but has not been run with a real key from this
 tree.
