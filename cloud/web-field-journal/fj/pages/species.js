@@ -1,4 +1,4 @@
-import { api, site, el, esc, $, $$, hhmm, pct, fmtDate, MONTHS, photoBox, photosFor, creditHtml, spectrogram, playButton, playPill, openRecording } from '../app.js';
+import { api, site, el, esc, $, $$, hhmm, pct, fmtDate, MONTHS, photoBox, photosFor, creditHtml, spectrogram, playButton, playPill, openRecording, setLearnLinks } from '../app.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -59,9 +59,8 @@ export async function render(main, { arg: slug }) {
       <div class="sec-head"><h2 class="h2">Recordings from the station</h2><a class="linkbtn" href="/species/${d.slug}#all" id="showall">Show all recordings</a></div>
       <div class="recs"></div>
       <div id="all"></div>
-    </section>
-
-    <section class="learn"><span class="t">Learn more</span><a href="${esc(d.links.all_about_birds)}" target="_blank" rel="noopener">All About Birds</a><a href="${esc(d.links.wikipedia)}" target="_blank" rel="noopener">Wikipedia</a><a href="${esc(d.links.ebird)}" target="_blank" rel="noopener">eBird</a></section>`;
+    </section>`;
+  setLearnLinks(d.links);
 
   // Main photo with the Best recording button, and the gallery.
   const best = d.best[0] ?? null;

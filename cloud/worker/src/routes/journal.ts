@@ -344,7 +344,7 @@ journal.get('/species/:slug', async (c) => {
     sun: sunTimes(x.today, x.st?.lat, x.st?.lon, x.tz),
     best: best.results.map(clipRow),
     more_this_week: more,
-    links: { all_about_birds: links.info_title === 'All About Birds' ? links.info : `https://www.allaboutbirds.org/guide/${(links.com_en_name || sp.com_name).replace(/'/g, '').replace(/ /g, '_')}`, wikipedia: links.wikipedia, ebird: `https://ebird.org/species/search?q=${encodeURIComponent(sp.sci_name)}` },
+    links: { all_about_birds: links.info.includes('allaboutbirds.org/') ? links.info : `https://www.allaboutbirds.org/guide/${(links.com_en_name || sp.com_name).replace(/'/g, '').replace(/ /g, '_')}`, wikipedia: links.wikipedia, ebird: `https://ebird.org/species/search?q=${encodeURIComponent(sp.sci_name)}` },
     today_date: x.today,
   });
 });

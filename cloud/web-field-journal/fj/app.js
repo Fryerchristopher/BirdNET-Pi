@@ -60,6 +60,7 @@ const ROUTES = [
   [/^\/archive(?:\/(\d{4}-\d{2}))?\/?$/, 'archive'],
 ];
 let current = null;
+let routeSeq = 0;
 export function navigate(href, { replace = false } = {}) {
   if (replace) history.replaceState(null, '', href); else history.pushState(null, '', href);
   route();
@@ -89,6 +90,8 @@ export async function route() {
   renderHeader(page);
   const main = $('main.main');
   if (!location.hash) window.scrollTo(0, 0);
+  const seq = ++routeSeq;
+  learnLinks = null;
   try {
     const mod = await import(`./pages/${page}.js`);
     await mod.render(main, params);
@@ -96,11 +99,24 @@ export async function route() {
     console.error(err);
     main.innerHTML = `<h1 class="h1">Something went wrong</h1><p class="lede">${esc(err.message)}. <a href="/">Back to this week.</a></p>`;
   }
+  if (seq === routeSeq) main.append(learnSection());
   if (location.hash) { const t = $(location.hash); if (t) t.scrollIntoView(); }
   document.title = `${site?.site_name || 'Field Journal'}${pageTitle(page, params)}`;
 }
 function pageTitle(page, p) {
   return { home: ': this week', search: ': species', species: '', today: p.arg ? `: ${p.arg}` : ': today', live: ': listen', archive: ': archive' }[page] ?? '';
+}
+
+// ---- learn more -------------------------------------------------------------------
+// Closes every page, just above the footer. A species page points it at that bird
+// with setLearnLinks(); everywhere else it points at the general guides.
+const LEARN_GENERAL = { all_about_birds: 'https://www.allaboutbirds.org/guide/', wikipedia: 'https://en.wikipedia.org/wiki/Bird', ebird: 'https://ebird.org/explore' };
+let learnLinks = null;
+export function setLearnLinks(links) { learnLinks = links; }
+function learnSection() {
+  const l = { ...LEARN_GENERAL, ...(learnLinks || {}) };
+  const a = (href, label) => (href ? `<a href="${esc(href)}" target="_blank" rel="noopener">${label}</a>` : '');
+  return el(`<section class="learn"><span class="t">Learn more</span>${a(l.all_about_birds, 'All About Birds')}${a(l.wikipedia, 'Wikipedia')}${a(l.ebird, 'eBird')}</section>`);
 }
 
 // ---- header and footer -----------------------------------------------------------
