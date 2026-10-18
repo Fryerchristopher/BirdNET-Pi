@@ -42,6 +42,11 @@ export function toggleTheme() {
   try { localStorage.setItem('fj-theme', next); } catch { /* fine */ }
   document.dispatchEvent(new Event('fj-theme'));
 }
+// ---- start page -------------------------------------------------------------------
+// A visitor can make Today their start page. Kept per browser; only the first load
+// of "/" honours it, so the This week link still goes to This week.
+export function startPage() { try { return localStorage.getItem('fj-start') || 'home'; } catch { return 'home'; } }
+export function setStartPage(p) { try { if (p === 'home') localStorage.removeItem('fj-start'); else localStorage.setItem('fj-start', p); } catch { /* fine */ } }
 export function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 
 // ---- router ---------------------------------------------------------------------
@@ -147,7 +152,7 @@ export function renderHeader(page) {
   // footer
   if (!$('footer.ftr')) {
     const f = el(`<footer class="ftr"><div>
-      <span>${name}, ${esc((s?.footer_blurb || 'a private BirdNET-Pi listening station').replace(/\.$/, ''))}. Built on <a href="https://github.com/Nachtzuster/BirdNET-Pi" target="_blank" rel="noopener">BirdNET-Pi</a>.</span>
+      <span>${name}, ${esc((s?.footer_blurb || 'a private BirdNET-Pi listening station').replace(/\.$/, ''))}. Built on the <a href="https://github.com/Fryerchristopher/BirdNET-Pi/tree/cloud" target="_blank" rel="noopener">Cloud branch of BirdNET-Pi</a>.</span>
       ${s?.weather_url ? `<a href="${esc(s.weather_url)}">${esc(s.weather_label || 'Weather')}</a>` : ''}
       <span class="right"><button class="theme">${themeIsDark() ? 'Light mode' : 'Dark mode'}</button><a href="/admin/">Admin</a></span>
     </div></footer>`);
@@ -435,4 +440,5 @@ function mountAsk() {
 }
 
 // ---- boot --------------------------------------------------------------------------------
+if (!isAdminPage && location.pathname === '/' && !location.search && !location.hash && startPage() === 'today') history.replaceState(null, '', '/today');
 if (!isAdminPage) loadSite().catch(() => null).then(route);

@@ -286,6 +286,8 @@ a.photo { text-decoration: none; }
 
 /* ---- today ------------------------------------------------------------------- */
 .today-lede { font-family: var(--serif); font-size: 20px; line-height: 1.6; margin: 12px 0 0; max-width: 68ch; }
+.startpin { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; cursor: pointer; }
+.startpin input { width: 16px; height: 16px; accent-color: var(--conifer); margin: 0; }
 .today-stack { display: flex; flex-direction: column; }
 .cond-grid { margin-top: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 24px; order: 1; }
 .cond-grid .panel { padding: 20px 24px; }
@@ -306,14 +308,19 @@ a.photo { text-decoration: none; }
 .dotgrid .legend .sunl { width: 2px; height: 14px; background: var(--lake); border-radius: 0; }
 .dotgrid .hint { margin-top: 8px; min-height: 22px; font-size: 14px; font-variant-numeric: tabular-nums; }
 .dg-scroll { overflow-x: auto; overflow-y: hidden; margin-top: 8px; }
-.dg { position: relative; min-width: 1100px; --dg-name: 200px; --dg-fixed: 350px; --dg-cols: 200px repeat(24, minmax(30px, 1fr)) 150px; }
+.dg { position: relative; min-width: 1100px; --dg-name: 200px; --dg-tot: 150px; --dg-lead: 350px; --dg-cols: var(--dg-name) var(--dg-tot) repeat(24, minmax(30px, 1fr)); }
 .dg .sun { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--lake); opacity: .7; pointer-events: none; z-index: 2; }
+/* Name and count stay pinned on the left while the hours scroll under them. */
+.dg .hrow .lead, .dg .hrow .end, .dg .nm, .dg .tot { position: sticky; z-index: 3; background: var(--surface); }
+/* Cover the row's top border too, so the sunrise and sunset lines don't show through. */
+.dg .nm, .dg .tot { box-shadow: 0 -1px 0 var(--rule); }
+.dg .hrow .lead { left: 0; align-self: stretch; justify-self: stretch; border-radius: 0; padding: 0; }
 .dg .hrow { display: grid; grid-template-columns: var(--dg-cols); align-items: center; height: 32px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .dg .hrow span { justify-self: center; padding: 2px 5px; border-radius: 999px; }
 .dg .hrow span.now { background: var(--accent); color: #1E2A24; font-weight: 700; }
-.dg .hrow .end { justify-self: start; padding-left: 16px; }
+.dg .hrow .end { left: var(--dg-name); align-self: stretch; justify-self: stretch; display: flex; align-items: center; border-radius: 0; padding: 0 16px 0 0; }
 .dg .row { display: grid; grid-template-columns: var(--dg-cols); align-items: stretch; border-top: 1px solid var(--rule); }
-.dg .nm { position: sticky; left: 0; z-index: 1; background: var(--surface); padding: 10px 12px 10px 0; font-family: var(--serif); font-size: 17px; line-height: 1.2; align-self: center; }
+.dg .nm { left: 0; padding: 10px 12px 10px 0; font-family: var(--serif); font-size: 17px; line-height: 1.2; display: flex; align-items: center; }
 .dg .nm a { color: var(--ink); text-decoration: none; } .dg .nm a:hover { text-decoration: underline; }
 .dg .cell { height: 44px; border: 0; padding: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: default; }
 .dg .cell.night { background: var(--nighttint); }
@@ -321,13 +328,16 @@ a.photo { text-decoration: none; }
 .dg .cell i { display: block; border-radius: 50%; background: var(--rule); }
 .dg .cell.has i { background: var(--conifer); }
 .dg .cell.sel i { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent); }
-.dg .tot { display: flex; align-items: center; gap: 8px; padding-left: 16px; }
+.dg .tot { left: var(--dg-name); display: flex; align-items: center; gap: 10px; padding-right: 16px; }
 .dg .tot .bar { flex: 1; height: 8px; } .dg .tot .bar div { height: 8px; background: var(--conifer); }
-.dg .tot b { font-weight: 600; font-size: 14px; min-width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
+.dg .tot b { font-weight: 600; font-size: 14px; min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 759.98px) {
   .today-stack .cond-grid { order: 2; }
   .today-stack .dotgrid { order: 1; margin-top: 32px; }
-  .dg { min-width: 960px; --dg-name: 130px; --dg-fixed: 220px; --dg-cols: 130px repeat(24, minmax(30px, 1fr)) 90px; }
+  .dg { min-width: 860px; --dg-name: 130px; --dg-tot: 44px; --dg-lead: 174px; }
+  .dg .tot { padding-right: 10px; }
+  .dg .tot .bar { display: none; }
+  .dg .hrow .end { padding-right: 10px; justify-content: flex-end; }
 }
 .dg-sel { margin-top: 20px; border-top: 1px solid var(--rule); padding-top: 16px; }
 .dg-sel .top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }

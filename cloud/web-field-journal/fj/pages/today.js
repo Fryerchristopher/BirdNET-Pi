@@ -1,4 +1,4 @@
-import { api, site, el, esc, $, $$, hhmm, pct, plural, longDate, fmtDate, spectrogram, playButton, openRecording, emptyToday } from '../app.js';
+import { api, site, el, esc, $, $$, hhmm, pct, plural, longDate, fmtDate, spectrogram, playButton, openRecording, emptyToday, startPage, setStartPage } from '../app.js';
 
 const p2 = (n) => String(n).padStart(2, '0');
 
@@ -17,6 +17,7 @@ export async function render(main, { arg: date }) {
   main.innerHTML = `
     <h1 class="h1">${isDay ? esc(longDate(date)) : 'Today'}</h1>
     <p class="today-lede">${esc(lede)}</p>
+    ${isDay ? '' : `<label class="startpin"><input type="checkbox" ${startPage() === 'today' ? 'checked' : ''}> Open the site on Today <span class="muted">(this browser only)</span></label>`}
     ${isDay ? `<div class="daynav"><a class="pill-neutral" href="/day/${d.prev}">Previous day</a>${d.next ? `<a class="pill-neutral" href="${d.next === site?.today ? '/today' : '/day/' + d.next}">Next day</a>` : ''}<a class="pill-neutral" href="/archive/${date.slice(0, 7)}">Archive</a></div>` : ''}
     <div class="today-stack">
       <section class="cond-grid">
@@ -43,8 +44,8 @@ export async function render(main, { arg: date }) {
           <div class="legend"><span><i style="width:8px;height:8px"></i><i style="width:14px;height:14px"></i><i style="width:22px;height:22px"></i>Dot size is calls in that hour</span><span><i class="night"></i>Night</span>${sun.sunrise ? `<span><i class="sunl"></i>Sunrise ${sun.sunrise}, sunset ${sun.sunset}</span>` : ''}</div></div>
         <div class="hint">Hover a dot for the count. Click it to hear those calls.</div>
         <div class="dg-scroll"><div class="dg">
-          ${sun.sunrise_frac != null ? `<div class="sun" style="left:calc(var(--dg-name) + (100% - var(--dg-fixed)) * ${sun.sunrise_frac})"></div><div class="sun" style="left:calc(var(--dg-name) + (100% - var(--dg-fixed)) * ${sun.sunset_frac})"></div>` : ''}
-          <div class="hrow"><span></span>${[...Array(24).keys()].map((h) => `<span class="${h === nowH ? 'now' : ''}">${p2(h)}</span>`).join('')}<span class="end">${d.is_today ? 'Today' : 'Day'}</span></div>
+          ${sun.sunrise_frac != null ? `<div class="sun" style="left:calc(var(--dg-lead) + (100% - var(--dg-lead)) * ${sun.sunrise_frac})"></div><div class="sun" style="left:calc(var(--dg-lead) + (100% - var(--dg-lead)) * ${sun.sunset_frac})"></div>` : ''}
+          <div class="hrow"><span class="lead"></span><span class="end">${d.is_today ? 'Today' : 'Day'}</span>${[...Array(24).keys()].map((h) => `<span class="${h === nowH ? 'now' : ''}">${p2(h)}</span>`).join('')}</div>
           <div class="rows"></div>
         </div></div>
         <div class="dg-sel hidden"></div>
@@ -53,12 +54,16 @@ export async function render(main, { arg: date }) {
       <section class="hbh"><h2 class="h2">Hour by hour</h2><div class="hrows"></div></section>
     </div>`;
 
+  const pin = $('.startpin input', main);
+  if (pin) pin.onchange = () => setStartPage(pin.checked ? 'today' : 'home');
+
   // dot grid rows
   const rows = $('.dg .rows', main);
   const hint = $('.hint', main);
   const defaultHint = 'Hover a dot for the count. Click it to hear those calls.';
   for (const s of d.species) {
     const row = el(`<div class="row"><div class="nm"><a href="/species/${s.slug}">${esc(s.com_name)}</a></div></div>`);
+    row.append(el(`<div class="tot"><b>${s.total}</b><div class="bar"><div style="width:${(s.total / maxTotal) * 100}%"></div></div></div>`));
     s.hours.forEach((n, h) => {
       const night = h < sunriseH || h > sunsetH;
       const past = !d.is_today || h <= nowH;
@@ -72,13 +77,12 @@ export async function render(main, { arg: date }) {
       }
       row.append(cell);
     });
-    row.append(el(`<div class="tot"><div class="bar"><div style="width:${(s.total / maxTotal) * 100}%"></div></div><b>${s.total}</b></div>`));
     rows.append(row);
   }
   if (!d.species.length) rows.append(el(`<p class="muted" style="padding:12px 0">${d.is_today ? 'Nothing yet. The grid fills in as the day goes on.' : 'Nothing was heard on this day.'}</p>`));
   // auto-scroll so the first active hours are in view
   const sc = $('.dg-scroll', main);
-  requestAnimationFrame(() => { if (sc.scrollWidth > sc.clientWidth) { const firstH = Math.min(...d.species.flatMap((s) => s.hours.map((n, h) => (n ? h : 99))), 5); const colW = (sc.scrollWidth - (window.innerWidth < 760 ? 220 : 350)) / 24; sc.scrollLeft = Math.max(0, colW * Math.max(0, firstH - 1)); } });
+  requestAnimationFrame(() => { if (sc.scrollWidth > sc.clientWidth) { const firstH = Math.min(...d.species.flatMap((s) => s.hours.map((n, h) => (n ? h : 99))), 5); const colW = (sc.scrollWidth - parseFloat(getComputedStyle($('.dg', main)).getPropertyValue('--dg-lead'))) / 24; sc.scrollLeft = Math.max(0, colW * Math.max(0, firstH - 1)); } });
 
   const selBox = $('.dg-sel', main);
   let selected = null;
