@@ -89,12 +89,42 @@ app.get('*', async (c) => {
   const res = await c.env.ASSETS.fetch(c.req.raw);
   // Client-side routes (the Field Journal UI uses /species/:slug, /day/:date, ...):
   // an unknown extension-less path gets the app shell instead of a 404.
-  if (res.status === 404 && !/\.[a-z0-9]+$/i.test(url.pathname) && (c.req.header('accept') ?? '').includes('text/html')) {
+  // Crawlers and link previews often send Accept: */* or none, so only a client
+  // that asks for something other than HTML (JSON, an image) gets the 404.
+  const accept = c.req.header('accept') ?? '';
+  const wantsHtml = !accept || accept.includes('text/html') || accept.includes('*/*');
+  if (res.status === 404 && !/\.[a-z0-9]+$/i.test(url.pathname) && wantsHtml) {
     const shell = await c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
-    if (shell.ok) return new Response(shell.body, { status: 200, headers: shell.headers });
+    if (shell.ok) return withShareTags(c.env, url, new Response(shell.body, { status: 200, headers: shell.headers }));
   }
+  if (url.pathname === '/' && (res.headers.get('content-type') ?? '').includes('text/html')) return withShareTags(c.env, url, res);
   return res;
 });
+
+/**
+ * Link previews (Facebook, Messages, Slack...) read the page's own HTML and run
+ * no JavaScript, so the app shell gets the site name, tagline and share image
+ * from settings written into its <head>.
+ */
+async function withShareTags(env: Env, url: URL, res: Response): Promise<Response> {
+  const s = await getSettings(env.DB).catch(() => ({}) as Record<string, string>);
+  const name = s.site_name || 'BirdNET-Pi';
+  const desc = s.site_tagline || '';
+  const attr = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const tags = [
+    ['og:type', 'website'], ['og:site_name', name], ['og:title', name], ['og:url', url.origin + url.pathname],
+    ...(desc ? [['og:description', desc]] : []),
+    ...(s.share_image ? [['og:image', new URL(s.share_image, url.origin).href], ['og:image:width', '1200'], ['og:image:height', '630']] : []),
+  ].map(([p, v]) => `<meta property="${p}" content="${attr(v)}">`);
+  tags.push(`<meta name="twitter:card" content="${s.share_image ? 'summary_large_image' : 'summary'}">`);
+  if (desc) tags.push(`<meta name="description" content="${attr(desc)}">`);
+  const out = new HTMLRewriter()
+    .on('title', { element: (e) => { e.setInnerContent(name); } })
+    .on('head', { element: (e) => { e.append(tags.join('\n'), { html: true }); } })
+    .transform(res);
+  out.headers.set('cache-control', 'public, max-age=300');
+  return out;
+}
 
 export default {
   fetch: app.fetch,

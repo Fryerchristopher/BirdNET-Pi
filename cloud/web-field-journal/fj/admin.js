@@ -110,7 +110,8 @@ async function settings(box) {
       ${f('site_name', 'Site name')}
       ${f('site_tagline', 'Tagline', 'text', 'The subtitle under "This week at the station".')}
       ${f('footer_blurb', 'Footer blurb', 'text', 'Follows the site name in the footer.')}
-      ${f('site_url', 'Public address', 'url', 'Used in notification links, for example https://birds.example.com.')}`)}
+      ${f('site_url', 'Public address', 'url', 'Used in notification links, for example https://birds.example.com.')}
+      ${f('share_image', 'Share image', 'url', 'Thumbnail shown when a link is posted to Facebook, Messages and the like. 1200 x 630 works best.')}`)}
     ${panel('Weather', 'Conditions on the home and Today pages come from a weather station API.', `
       ${f('weather_api_url', 'Weather API address', 'url', 'A Dorrington Weather style API (/api/current.json). Leave empty to hide conditions.')}
       ${f('weather_url', 'Weather site link', 'url')}

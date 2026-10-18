@@ -28,7 +28,7 @@ html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
 # Everything the Worker owns goes to the Worker first; everything else is a
 # static file.
-run_worker_first = ["/api/*", "/ingest/*", "/media/*", "/theme.css", "/stream", "/index.php", "/views.php"]
+run_worker_first = ["/", "/api/*", "/ingest/*", "/media/*", "/theme.css", "/stream", "/index.php", "/views.php"]
 
 [[d1_databases]]
 binding = "DB"
